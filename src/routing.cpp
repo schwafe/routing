@@ -1,88 +1,131 @@
 #include "routing.hpp"
+#include "block.hpp"
 
-void routeNets(unsigned char &gridSize, std::map<unsigned short, net> &nets, unsigned char &maxTracks)
+std::stack<channelID> retrace(unsigned char const &arraySize, auto &indices, channelID sink, unsigned char &indexOfSink, auto &channelInformation)
 {
-    unsigned short netsRouted = 0;
-    std::map<std::string, std::set<channelID>> openPinLocations;
-    std::map<unsigned char, std::map<unsigned char, channelInfo>> usedXTracks;
-    std::map<unsigned char, std::map<unsigned char, channelInfo>> usedYTracks;
-}
+    std::stack<channelID> connectionToSink;
+    connectionToSink.push(sink);
+    channelInformation.find(sink)->second.useChannel();
 
-void mazeRoute(unsigned char &gridSize, net &net, unsigned char &maxTracks, auto &openPinLocations, auto &usedXTracks, auto &usedYTracks)
-{
-    std::map<unsigned char, std::set<channelID>> indices;
-    std::map<unsigned char, std::set<unsigned char>> usedXChannels;
-    std::map<unsigned char, std::set<unsigned char>> usedYChannels;
-    unsigned short numberOfPinsReached;
-
-    indices.emplace(0, std::set<channelID>(net.getStartingChannel()));
-
-    while (numberOfPinsReached < net.getPinCount())
-    {
-        wavePropagation(gridSize, indices, maxTracks, usedXTracks, usedYTracks, usedXChannels, usedYChannels);
-    }
-}
-
-void addChannelIfValid(char &x, char &y, char &type, unsigned char &maxTracks, auto &usedTracks, auto &usedChannels, auto &nextStep)
-{
-    if (!usedChannels.find(x)->second.contains(y) && !usedTracks.find(x)->second.find(y)->second.isFull(maxTracks))
-        nextStep.emplace(x, y, type);
-    TODO check if pin was reached
-}
-
-void wavePropagation(unsigned char &gridSize, auto &indices, unsigned char &maxTracks, auto &usedXTracks, auto &usedYTracks, auto &usedXChannels, auto &usedYChannels)
-{
-    int currentIndex = 0;
-    bool pinFound = false;
-
+    channelID currentChannel = sink;
+    unsigned char expectedIndex = indexOfSink;
     do
     {
-        std::set<channelID> &nextStep = indices.get(currentIndex + 1);
-        for (channelID channel : indices.get(currentIndex))
+        expectedIndex--;
+        channelID chosenChannel = currentChannel.chooseNeighbour(arraySize, indices, expectedIndex, channelInformation);
+
+        channelInformation.find(chosenChannel)->second.useChannel();
+
+        currentChannel = chosenChannel;
+        connectionToSink.push(chosenChannel);
+    } while (expectedIndex > 0);
+
+    return connectionToSink;
+}
+
+/* @return true if pin was found, false otherwise
+ */
+bool addChannelIfValid(channelID channel, auto &indices, unsigned char index, unsigned char const &maxTracks, auto &channelInformation, auto &newWave, auto &relevantChannels,
+                       unsigned short &numberOfPinsReached, channelID &sink, std::set<std::string> &reachedBlocks)
+{
+    if (!indices.contains(channel) && !channelInformation.find(channel)->second.isFull(maxTracks))
+    {
+        indices.emplace(channel, index);
+
+        if (relevantChannels.contains(channel))
         {
-            if (channel.getType() == 'x')
+            for (std::string name : relevantChannels.find(channel)->second)
             {
-                if (channel.getYCoordinate() > 0)
-                {
-                    addChannelIfValid(channel.getXCoordinate() - 1, channel.getYCoordinate(), 'y', maxTracks, usedYTracks, usedYChannels, nextStep);
-                    addChannelIfValid(channel.getXCoordinate(), channel.getYCoordinate(), 'y', maxTracks, usedYTracks, usedYChannels, nextStep);
-                }
-                if (channel.getYCoordinate() < gridSize)
-                {
-                    addChannelIfValid(channel.getXCoordinate() - 1, channel.getYCoordinate() + 1, 'y', maxTracks, usedYTracks, usedYChannels, nextStep);
-                    addChannelIfValid(channel.getXCoordinate(), channel.getYCoordinate() + 1, 'y', maxTracks, usedYTracks, usedYChannels, nextStep);
-                }
-                if (channel.getXCoordinate() > 0)
-                {
-                    addChannelIfValid(channel.getXCoordinate() - 1, channel.getYCoordinate(), 'x', maxTracks, usedXTracks, usedXChannels, nextStep);
-                }
-                if (channel.getXCoordinate() < gridSize)
-                {
-                    addChannelIfValid(channel.getXCoordinate() + 1, channel.getYCoordinate(), 'x', maxTracks, usedXTracks, usedXChannels, nextStep);
-                }
+                numberOfPinsReached++;
+                reachedBlocks.insert(name);
             }
-            else
+            relevantChannels.erase(channel);
+            sink = channel;
+            return true;
+        }
+        else
+        {
+            newWave.insert(channel);
+        }
+    }
+    return false;
+}
+
+unsigned char wavePropagation(unsigned char const &arraySize, auto &indices, std::set<channelID> &indexZeroChannels, unsigned char const &maxTracks, auto &channelInformation,
+                              auto &relevantChannels, unsigned short &numberOfPinsReached, channelID &sink, std::set<std::string> &reachedBlocks)
+{
+    unsigned char currentIndex = 0;
+
+    std::set<channelID> currentWave(indexZeroChannels);
+    std::set<channelID> newWave;
+    do
+    {
+        for (channelID channel : currentWave)
+        {
+            for (channelID neighbour : channel.getNeighbours(arraySize))
             {
-                if (channel.getXCoordinate() > 0)
-                {
-                    addChannelIfValid(channel.getXCoordinate(), channel.getYCoordinate() - 1, 'x', maxTracks, usedXTracks, usedXChannels, nextStep);
-                    addChannelIfValid(channel.getXCoordinate(), channel.getYCoordinate(), 'x', maxTracks, usedXTracks, usedXChannels, nextStep);
-                }
-                if (channel.getXCoordinate() < gridSize)
-                {
-                    addChannelIfValid(channel.getXCoordinate() + 1, channel.getYCoordinate() - 1, 'x', maxTracks, usedXTracks, usedXChannels, nextStep);
-                    addChannelIfValid(channel.getXCoordinate() + 1, channel.getYCoordinate(), 'x', maxTracks, usedXTracks, usedXChannels, nextStep);
-                }
-                if (channel.getYCoordinate() > 0)
-                {
-                    addChannelIfValid(channel.getXCoordinate(), channel.getYCoordinate() - 1, 'y', maxTracks, usedYTracks, usedYChannels, nextStep);
-                }
-                if (channel.getYCoordinate() < gridSize)
-                {
-                    addChannelIfValid(channel.getXCoordinate(), channel.getYCoordinate() + 1, 'y', maxTracks, usedYTracks, usedYChannels, nextStep);
-                }
+                bool pinFound = addChannelIfValid(neighbour, indices, currentIndex, maxTracks, channelInformation, newWave, relevantChannels, numberOfPinsReached, sink, reachedBlocks);
+                if (pinFound)
+                    return currentIndex;
             }
         }
         currentIndex++;
-    } while (!pinFound);
+
+        currentWave.clear();
+        currentWave = newWave;
+        newWave.clear();
+    } while (!currentWave.empty());
+
+    // no pin found, net is not routable
+    return -1;
+}
+
+bool routeNets(unsigned char const &arraySize, unsigned char const &maxTracks, std::map<std::string,std::shared_ptr<net>> &nets, std::map<std::string, block> &blocks)
+{
+    std::map<channelID, channelInfo> channelInformation = generateChannelInformation(arraySize);
+
+    for (auto &entry : nets)
+    {
+        std::map<channelID, unsigned char> indices;
+        unsigned short numberOfPinsReached;
+        std::map<channelID, std::set<std::string>> relevantChannels;
+
+        for (auto &entry : entry.second->getConnectedPinsAndTheirRouting())
+        {
+            std::string name = entry.first;
+
+            for (channelID channel : blocks.find(name)->second.getOpenChannels())
+            {
+                if (relevantChannels.contains(channel))
+                {
+                    relevantChannels.find(channel)->second.insert(name);
+                }
+                else
+                {
+                    relevantChannels.emplace(channel, std::set<std::string>{name});
+                }
+            }
+        }
+
+        indices.emplace(entry.second->getSource(), 0);
+        std::set<channelID> indexZeroChannels{entry.second->getSource()};
+
+        while (numberOfPinsReached < entry.second->getPinCount())
+        {
+            channelID sink;
+            std::set<std::string> reachedBlocks;
+            unsigned char indexOfSink = wavePropagation(arraySize, indices, indexZeroChannels, maxTracks, channelInformation, relevantChannels,
+                                                        numberOfPinsReached, sink, reachedBlocks);
+            std::stack<channelID> connectionToSink = retrace(arraySize, indices, sink, indexOfSink, channelInformation);
+
+            indexZeroChannels.insert(sink);
+            for (std::string block : reachedBlocks)
+            {
+                // 1-2 blocks
+                entry.second->setConnection(block, connectionToSink);
+            }
+        }
+    }
+    // TODO handle failure and report it
+    return true;
 }

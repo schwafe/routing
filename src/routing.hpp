@@ -4,8 +4,10 @@
 #include <map>
 #include <set>
 #include <string>
+#include <memory>
 #include "net.hpp"
+#include "block.hpp"
 
-void routeNets(std::map<unsigned short, net>& nets, unsigned char& maxTracks);
+bool routeNets(unsigned char const &arraySize, unsigned char const &maxTracks, std::map<std::string,std::shared_ptr<net>> &nets, std::map<std::string, block> &blocks);
 
 #endif

@@ -12,12 +12,11 @@ namespace constants {
     const std::string placementSuffix = ".place";
     const std::string routingSuffix = ".route";
 
-    const unsigned int maxLineLength = 256;
-
     const unsigned char success = 0;
     const unsigned char wrongArguments = 1;
     const unsigned char readFailure = 2;
 
+    const unsigned char startingValueMaxTracks = 12;
 
     const std::regex globalPattern("^\\.global (\\S+)\\s*.*");
     const std::regex inputPattern("^\\.input (\\S+)\\s*.*");
@@ -27,6 +26,7 @@ namespace constants {
     const std::regex clbPinPattern("^pinlist: (\\S+) (\\S+) (\\S+) (\\S+) (\\S+) (\\S+)\\s*.*");
     const std::regex clbSubPattern("^subblock:.*");
 
+    const std::regex arraySizePattern("\\(d{1,2}) x \\d{1,2}");
     const std::regex commentPattern("^\\s*#.*");
     const std::regex placePattern("^(\\S+)\\s+(\\d+)\\s+(\\d+)\\s+(\\d)\\s");
 }

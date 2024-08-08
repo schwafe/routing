@@ -3,7 +3,11 @@ TODO check for EOF (placementFile.eofbit)
 TODO check for lines that continue - they end in '\' and there is no '#' in the line before that
 TODO private access to variables of net class
 TODO channelID als shared_ptr?
+TODO Einträge der Pins in Kanälen (bis zu zwei pro Kanal) für jeden Durchlauf des Algorithmus als eigene Struktur, statt Set?
+TODO Welle fertig propagieren, um zu überprüfen, ob mehrere Pins in gleicher Reichweite sind?
+TODO gleiche Spur weiterverwenden oder anderes Auswahlverfahren? langsamer, weil jedes Mal gesucht werden muss welche Spur frei ist
 
+TODO clock immer global?
 TODO Sawitzki fragen: kann ich subblocks bei .net Datein ignorieren, solange ich mich auf eine Architektur ohne Cluster beschränke? manual_430 sagt ja
    "VPR needs the subblock information in a netlist only for timing analysis" - für mich reicht die Info, ob Clock an den clb angeschlossen ist oder nicht
 TODO Beibehaltung der Wellenfront?
@@ -46,7 +50,7 @@ Informationen für die interne Verarbeitung:
          als Teil der Indizes gespeichert - alle Punkte mit Index 0 sind Startpunkt und der neue Anschluss wird auch als 0 eingetragen
          alle Einträge mit Index größer Null werden gelöscht vor dem neuen Durchgang
       noch zu erreichende Anschlüsse
-         TODO
+         multimap<>
       Anzahl der bisher erreichten Anschlüsse
          unsigned short
       Reihenfolge der Verdrahtung des Netzes
@@ -59,3 +63,26 @@ Outputs:
    (kritischer Pfad + Laufzeit)
    Verdrahtung jedes Netzes
    Zuordnung der einzelnen Kabelsegmente zu Tracks
+
+
+Algorithmus:
+   Retracing:
+      1. Track für den Sink-Kanal festlegen
+      2. angrenzende Kanäle mit index - 1 vergleichen - Kanal in gleicher Richtung wählen (falls nicht möglich, den mit niedrigster Belegung)
+         a. zuerst in gleicher Richtung (x falls x, y falls y)
+         b. falls keiner in gleicher Richtung passt, die anderen
+      3. Track für den gefundenen Kanal festlegen
+      4. aktuellen Kanal auf den gefundenen Kanal ändern
+      5. index--
+      6. zurück zu 2.
+
+
+
+
+
+
+
+
+Mögliche kreative Komponenten:
+   - Kanäle, die zwei Anschlüsse auf einmal erreichen, stark bevorzugen
+   - Kanäle, die weniger voll sind, bevorzugen
