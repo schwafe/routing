@@ -1,0 +1,61 @@
+TODO .global bei .net Datein beachten und bei Ausgabe als Netz auflisten.
+TODO check for EOF (placementFile.eofbit)
+TODO check for lines that continue - they end in '\' and there is no '#' in the line before that
+TODO private access to variables of net class
+TODO channelID als shared_ptr?
+
+TODO Sawitzki fragen: kann ich subblocks bei .net Datein ignorieren, solange ich mich auf eine Architektur ohne Cluster beschränke? manual_430 sagt ja
+   "VPR needs the subblock information in a netlist only for timing analysis" - für mich reicht die Info, ob Clock an den clb angeschlossen ist oder nicht
+TODO Beibehaltung der Wellenfront?
+   erfordert eine Neuberechnung vieler Indizes nach dem Erreichen eines Anschlusses
+TODO Vorsortierung der Netze?
+
+Erster Ansatz ist eine Rasterverdrahtung.
+
+Inputs:
+   implizit, bzw. vordefiniert:
+      keine Cluster
+      4-LUT/4-LUT + FF/FF CLBs
+   
+   .net Datei:
+      Pads (Input/Output + Name)
+      CLBs (Name und Pinbelegung)
+      Netze
+      Clock (global)
+
+   .place Datei:
+      .net Datei - für einen Check, dass die gleiche Datei verwendet wird
+      Array Größe
+      Platzierung jeder Komponente (x + y, subblock für Pads)
+
+Informationen für die interne Verarbeitung:
+   alle Netze
+      Map([index des Netzes] unsigned short, [[input des Netzes] string, [alle Anschlüsse und jeweils ihre Reihenfolge der Verdrahtung] map(string, Stack von Koordinatenpaaren)] net)
+   Anzahl der verarbeiteten Netze (index des Netzes, das als nächstes verdrahtet werden soll)
+      unsigned short
+   belegte Tracks und Belegungsgrad von Kanälen (falls alle Tracks belegt sind, kann der Kanal nicht mehr verwendet werden und falls zwei Kanäle unterschiedlich voll sind und anderweitig für den Algorithmus gleichwertig sind, sollte der Kanal mit mehr Platz gewählt werden)
+      Map (Koordinatenpaar, [[belegte Tracks] unsigned char, [tracks als bis zu 16 Bits] unsigned short] Kanal)
+   offene Anschlüsse für alle Pads und CLBs
+      Map([name] string, [Kanäle, über die die Anschlüsse erreicht werden können] Set von Koordinatenpaaren)
+   pro Durchlauf:
+      Indizes des Algorithmus (Wellenfront)
+         Map([index] unsigned char, Set von Koordinatenpaaren)
+      schon behandelte Kanäle
+         Set(Koordinatenpaar)
+      bisheriges Netz (Startpunkt der neuen Wellenfront, nachdem ein Anschluss erreicht wurde)
+         als Teil der Indizes gespeichert - alle Punkte mit Index 0 sind Startpunkt und der neue Anschluss wird auch als 0 eingetragen
+         alle Einträge mit Index größer Null werden gelöscht vor dem neuen Durchgang
+      noch zu erreichende Anschlüsse
+         TODO
+      Anzahl der bisher erreichten Anschlüsse
+         unsigned short
+      Reihenfolge der Verdrahtung des Netzes
+         wird direkt im Netz gespeichert
+         auf den Stack wird vom Anschluss zur Quelle jeder Kanal eingetragen (Richtung des Algorithmus) und bei der Ausgabe am Ende werden die Kanäle von der Quelle zum Anschluss aufgelistet
+
+Outputs:
+   Anzahl der Tracks pro Kanal (minimale Breite)
+   Anzahl der Netze (mindestens implizit, da alle Netze aufgelistet werden)
+   (kritischer Pfad + Laufzeit)
+   Verdrahtung jedes Netzes
+   Zuordnung der einzelnen Kabelsegmente zu Tracks
