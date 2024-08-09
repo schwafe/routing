@@ -42,7 +42,7 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
             blockName = matches[1];
 
             std::shared_ptr<block> p_block = std::make_shared<block>('c');
-            blocks.emplace(blockName, p_block);
+            blocks.insert(std::make_pair(blockName, p_block));
 
             std::getline(netFile, line);
             std::regex_match(line, matches, constants::clbPinPattern);
@@ -58,7 +58,7 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
                     {
                         std::shared_ptr<net> p_net = std::make_shared<net>();
                         p_net->setConnectedPin(blockName);
-                        netsByNameOfTheNet.emplace(matches[index], std::move(p_net));
+                        netsByNameOfTheNet.insert(std::make_pair(matches[index], std::move(p_net)));
                     }
                 }
             }
@@ -71,14 +71,14 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
             else
             {
                 p_net = std::make_shared<net>();
-                netsByNameOfTheNet.emplace(matches[5], p_net);
+                netsByNameOfTheNet.insert(std::make_pair(matches[5], p_net));
             }
             p_net->setSourceBlockName(blockName);
-            netsByNameOfTheSourceBlock.emplace(blockName, std::move(p_net));
+            netsByNameOfTheSourceBlock.insert(std::make_pair(blockName, std::move(p_net)));
 
             if (matches[6] != "open")
             {
-                blocksConnectedToClock.emplace(blockName, std::pair<unsigned short, std::shared_ptr<block>>(0, std::move(p_block)));
+                blocksConnectedToClock.insert(std::make_pair(blockName, std::pair<unsigned short, std::shared_ptr<block>>(0, std::move(p_block))));
                 netsConnectedToClock.insert(matches[5]);
             }
 
@@ -92,7 +92,7 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
         else if (std::regex_match(line, matches, constants::outputPattern))
         {
             blockName = matches[1];
-            blocks.emplace(blockName, std::make_shared<block>('p'));
+            blocks.insert(std::make_pair(blockName, std::make_shared<block>('p')));
 
             std::getline(netFile, line);
             std::regex_match(line, matches, constants::padPinPattern);
@@ -107,7 +107,7 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
             {
                 std::shared_ptr<net> p_net = std::make_shared<net>();
                 p_net->setConnectedPin(blockName);
-                netsByNameOfTheNet.emplace(matches[1], std::move(p_net));
+                netsByNameOfTheNet.insert(std::make_pair(matches[1], std::move(p_net)));
             }
 
             std::getline(netFile, line);
@@ -118,7 +118,7 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
             blockName = matches[1];
             std::shared_ptr<block> p_block = std::make_shared<block>('p');
 
-            blocks.emplace(blockName, p_block);
+            blocks.insert(std::make_pair(blockName, p_block));
 
             std::getline(netFile, line);
             std::regex_match(line, matches, constants::padPinPattern);
@@ -133,14 +133,14 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
             else
             {
                 p_net = std::make_shared<net>();
-                netsByNameOfTheNet.emplace(matches[1], p_net);
+                netsByNameOfTheNet.insert(std::make_pair(matches[1], p_net));
             }
             p_net->setSourceBlockName(blockName);
-            netsByNameOfTheSourceBlock.emplace(blockName, std::move(p_net));
+            netsByNameOfTheSourceBlock.insert(std::make_pair(blockName, std::move(p_net)));
 
             if (matches[6] != "open")
             {
-                blocksConnectedToClock.emplace(blockName, std::pair<unsigned short, std::shared_ptr<block>>(0, std::move(p_block)));
+                blocksConnectedToClock.insert(std::make_pair(blockName, std::pair<unsigned short, std::shared_ptr<block>>(0, std::move(p_block))));
                 netsConnectedToClock.insert(matches[5]);
             }
 
@@ -168,11 +168,8 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
 
     for (std::string netName : netsConnectedToClock)
     {
-        std::cout << "2123";
         std::string outputBlockName = outputBlockNameByNameOfTheNet.find(netName)->second;
-        std::cout << outputBlockName << std::endl;
-        std::pair<unsigned short, std::shared_ptr<block>> pair(0, blocks.find(outputBlockName)->second);
-        blocksConnectedToClock.emplace(outputBlockName, pair);
+        blocksConnectedToClock.insert(std::make_pair(outputBlockName, std::make_pair(0, blocks.find(outputBlockName)->second)));
     }
 
     if (clockName != "")
