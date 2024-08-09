@@ -1,5 +1,6 @@
 #include <limits>
 #include "channel.hpp"
+#include "constants.hpp"
 
 bool channelInfo::isFull(unsigned char maxTracks)
 {
@@ -11,11 +12,9 @@ unsigned char channelInfo::getUsedTracks()
     return usedTracks;
 }
 
-void channelInfo::useChannel()
+unsigned char channelInfo::useChannel()
 {
-    tracks <<= 1;
-    tracks[0] = 1;
-    usedTracks++;
+    return ++usedTracks;
 }
 
 channelID::channelID(unsigned char x, unsigned char y, char type)
@@ -50,46 +49,46 @@ char channelID::getType()
 std::set<channelID> channelID::getNeighbours(unsigned char arraySize)
 {
     std::set<channelID> neighbours;
-    if (channelID::type == 'x')
+    if (channelID::type == constants::channelTypeX)
     {
         if (y > 0)
         {
-            neighbours.emplace(x - 1, y, 'y');
-            neighbours.emplace(x, y, 'y');
+            neighbours.emplace(x - 1, y, constants::channelTypeY);
+            neighbours.emplace(x, y, constants::channelTypeY);
         }
         if (y < arraySize)
         {
-            neighbours.emplace(x - 1, y + 1, 'y');
-            neighbours.emplace(x, y + 1, 'y');
+            neighbours.emplace(x - 1, y + 1, constants::channelTypeY);
+            neighbours.emplace(x, y + 1, constants::channelTypeY);
         }
         if (x > 1)
         {
-            neighbours.emplace(x - 1, y, 'x');
+            neighbours.emplace(x - 1, y, constants::channelTypeX);
         }
         if (x < arraySize)
         {
-            neighbours.emplace(x + 1, y, 'x');
+            neighbours.emplace(x + 1, y, constants::channelTypeX);
         }
     }
     else
     {
         if (x > 0)
         {
-            neighbours.emplace(x, y - 1, 'x');
-            neighbours.emplace(x, y, 'x');
+            neighbours.emplace(x, y - 1, constants::channelTypeX);
+            neighbours.emplace(x, y, constants::channelTypeX);
         }
         if (x < arraySize)
         {
-            neighbours.emplace(x + 1, y - 1, 'x');
-            neighbours.emplace(x + 1, y, 'x');
+            neighbours.emplace(x + 1, y - 1, constants::channelTypeX);
+            neighbours.emplace(x + 1, y, constants::channelTypeX);
         }
         if (y > 1)
         {
-            neighbours.emplace(x, y - 1, 'y');
+            neighbours.emplace(x, y - 1, constants::channelTypeY);
         }
         if (y < arraySize)
         {
-            neighbours.emplace(x, y + 1, 'y');
+            neighbours.emplace(x, y + 1, constants::channelTypeY);
         }
     }
     return neighbours;
@@ -106,30 +105,30 @@ channelID channelID::chooseOtherTypeNeighbours(unsigned char arraySize, std::map
 {
     std::set<channelID> candidates;
 
-    if (channelID::type == 'x')
+    if (channelID::type == constants::channelTypeX)
     {
         if (y > 0)
         {
-            insertIfValid(x - 1, y, 'y', indices, expectedIndex, candidates);
-            insertIfValid(x, y, 'y', indices, expectedIndex, candidates);
+            insertIfValid(x - 1, y, constants::channelTypeY, indices, expectedIndex, candidates);
+            insertIfValid(x, y, constants::channelTypeY, indices, expectedIndex, candidates);
         }
         if (y < arraySize)
         {
-            insertIfValid(x - 1, y + 1, 'y', indices, expectedIndex, candidates);
-            insertIfValid(x, y + 1, 'y', indices, expectedIndex, candidates);
+            insertIfValid(x - 1, y + 1, constants::channelTypeY, indices, expectedIndex, candidates);
+            insertIfValid(x, y + 1, constants::channelTypeY, indices, expectedIndex, candidates);
         }
     }
     else
     {
         if (x > 0)
         {
-            insertIfValid(x, y - 1, 'x', indices, expectedIndex, candidates);
-            insertIfValid(x, y, 'x', indices, expectedIndex, candidates);
+            insertIfValid(x, y - 1, constants::channelTypeX, indices, expectedIndex, candidates);
+            insertIfValid(x, y, constants::channelTypeX, indices, expectedIndex, candidates);
         }
         if (x < arraySize)
         {
-            insertIfValid(x + 1, y - 1, 'x', indices, expectedIndex, candidates);
-            insertIfValid(x + 1, y, 'x', indices, expectedIndex, candidates);
+            insertIfValid(x + 1, y - 1, constants::channelTypeX, indices, expectedIndex, candidates);
+            insertIfValid(x + 1, y, constants::channelTypeX, indices, expectedIndex, candidates);
         }
     }
 
@@ -152,10 +151,10 @@ channelID channelID::chooseOtherTypeNeighbours(unsigned char arraySize, std::map
 
 channelID channelID::chooseSameTypeNeighbours(unsigned char arraySize, std::map<channelID, unsigned char> &indices, unsigned char expectedIndex, std::map<channelID, channelInfo> &channelInformation)
 {
-    if (channelID::type == 'x')
+    if (channelID::type == constants::channelTypeX)
     {
-        channelID leftChannel(x - 1, y, 'x');
-        channelID rightChannel(x + 1, y, 'x');
+        channelID leftChannel(x - 1, y, constants::channelTypeX);
+        channelID rightChannel(x + 1, y, constants::channelTypeX);
         if (x == arraySize || indices.find(rightChannel)->second > expectedIndex)
         {
             return leftChannel;
@@ -178,8 +177,8 @@ channelID channelID::chooseSameTypeNeighbours(unsigned char arraySize, std::map<
     }
     else
     {
-        channelID lowerChannel(x, y - 1, 'y');
-        channelID upperChannel(x, y + 1, 'y');
+        channelID lowerChannel(x, y - 1, constants::channelTypeY);
+        channelID upperChannel(x, y + 1, constants::channelTypeY);
         if (y == arraySize || indices.find(upperChannel)->second > expectedIndex)
         {
             return lowerChannel;
@@ -219,7 +218,7 @@ std::map<channelID, channelInfo> generateChannelInformation(unsigned char arrayS
     {
         for (int y = 0; y <= arraySize; y++)
         {
-            channelInformation.emplace(channelID(x, y, 'x'), channelInfo());
+            channelInformation.emplace(channelID(x, y, constants::channelTypeX), channelInfo());
         }
     }
 
@@ -227,7 +226,7 @@ std::map<channelID, channelInfo> generateChannelInformation(unsigned char arrayS
     {
         for (int y = 1; y <= arraySize; y++)
         {
-            channelInformation.emplace(channelID(x, y, 'y'), channelInfo());
+            channelInformation.emplace(channelID(x, y, constants::channelTypeY), channelInfo());
         }
     }
     return channelInformation;

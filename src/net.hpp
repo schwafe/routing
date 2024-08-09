@@ -9,18 +9,23 @@
 
 class net
 {
-    channelID source;
-    std::map<std::string, std::stack<channelID>> connectedPinsAndTheirRouting;
+    channelID sourceChannel;
+    std::string sourceBlockName;
+    unsigned short index;
+    std::map<std::string, std::stack<std::pair<channelID, unsigned char>>> connectedPinsAndTheirRouting;
 
 public:
     net();
-    net(channelID source);
     unsigned short getPinCount();
-    channelID getSource();
-    std::map<std::string, std::stack<channelID>> &getConnectedPinsAndTheirRouting();
-    void setSource(channelID source);
-    void setConnectedPin(std::string name);
-    void setConnection(std::string reachedBlock, std::stack<channelID> connectionToSink);
+    channelID getSourceChannel();
+    std::string getSourceBlockName();
+    unsigned short getIndex();
+    std::map<std::string, std::stack<std::pair<channelID, unsigned char>>> getConnectedPinBlockNamesAndTheirRouting();
+    void setSourceChannel(channelID sourceChannel);
+    void setSourceBlockName(std::string sourceBlockName);
+    void setIndex(unsigned short index);
+    void setConnectedPin(std::string blockName);
+    void setConnection(std::string reachedBlock, std::stack<std::pair<channelID, unsigned char>> connectionToSink);
 };
 
 #endif

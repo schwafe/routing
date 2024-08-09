@@ -2,6 +2,7 @@ TODO .global bei .net Datein beachten und bei Ausgabe als Netz auflisten.
 TODO check for EOF (placementFile.eofbit)
 TODO check for lines that continue - they end in '\' and there is no '#' in the line before that
 TODO private access to variables of net class
+TODO ressourcenoptimierung? (std::move, weniger copy, mehr &, etc.)
 TODO channelID als shared_ptr?
 TODO Einträge der Pins in Kanälen (bis zu zwei pro Kanal) für jeden Durchlauf des Algorithmus als eigene Struktur, statt Set?
 TODO Welle fertig propagieren, um zu überprüfen, ob mehrere Pins in gleicher Reichweite sind?

@@ -13,7 +13,7 @@ class channelInfo
 public:
     bool isFull(unsigned char maxTracks);
     unsigned char getUsedTracks();
-    void useChannel();
+    unsigned char useChannel();
 };
 
 class channelID

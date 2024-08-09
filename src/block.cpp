@@ -1,8 +1,65 @@
 #include "block.hpp"
+#include "constants.hpp"
+
+block::block(char type)
+{
+    block::type = type;
+}
+
+void block::initialise(unsigned char x, unsigned char y, unsigned char subblockNumber)
+{
+    block::x = x;
+    block::y = y;
+    block::subblockNumber = subblockNumber;
+
+    std::set<channelID> channels;
+    if (type == 'c')
+    {
+        channels.emplace(x, y, constants::channelTypeX);
+        channels.emplace(x, y, constants::channelTypeY);
+        channels.emplace(x, y - 1, constants::channelTypeX);
+        channels.emplace(x - 1, y, constants::channelTypeY);
+    }
+    else
+    {
+        if (x == 0)
+        {
+            channels.emplace(x, y, constants::channelTypeY);
+        }
+        else if (y == 0)
+        {
+            channels.emplace(x, y, constants::channelTypeX);
+        }
+        else if (x > y)
+        {
+            channels.emplace(x - 1, y, constants::channelTypeY);
+        }
+        else
+        {
+            channels.emplace(x, y - 1, constants::channelTypeX);
+        }
+    }
+    block::openChannels = channels;
+}
 
 char block::getType()
 {
     return type;
+}
+
+unsigned char block::getX()
+{
+    return x;
+}
+
+unsigned char block::getY()
+{
+    return y;
+}
+
+unsigned char block::getSubblockNumber()
+{
+    return subblockNumber;
 }
 
 std::set<channelID> block::getOpenChannels()
@@ -30,7 +87,7 @@ unsigned char block::determinePinNumber(channelID channel)
         }
         else
         {
-            if (channel.getType() == 'x')
+            if (channel.getType() == constants::channelTypeX)
             {
                 number = 2;
             }

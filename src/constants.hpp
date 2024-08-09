@@ -1,16 +1,18 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <regex>
 #include <string>
 
 namespace constants {
     //TODO change for standalone tests
     const std::string netPrefix = "../test files/net/";
-    const std::string placementPrefix = "../test files/vpr_placements/";
+    const std::string placePrefix = "../test files/vpr_placements/";
+    const std::string routingPrefix = "../test files/vpr_routings/";
 
     const std::string netSuffix = ".net";
     const std::string placementSuffix = ".place";
-    const std::string routingSuffix = ".route";
+    const std::string routingSuffix = "_my.route";
 
     const unsigned char success = 0;
     const unsigned char wrongArguments = 1;
@@ -26,9 +28,15 @@ namespace constants {
     const std::regex clbPinPattern("^pinlist: (\\S+) (\\S+) (\\S+) (\\S+) (\\S+) (\\S+)\\s*.*");
     const std::regex clbSubPattern("^subblock:.*");
 
-    const std::regex arraySizePattern("\\(d{1,2}) x \\d{1,2}");
+    const std::regex arraySizePattern("(\\d{1,2}) x \\d{1,2}");
     const std::regex commentPattern("^\\s*#.*");
     const std::regex placePattern("^(\\S+)\\s+(\\d+)\\s+(\\d+)\\s+(\\d)\\s");
+
+    const unsigned char channelTypeY = 'Y';
+    const unsigned char channelTypeX = 'X';
+
+    const unsigned char blockTypeCLB = 'C';
+    const unsigned char blockTypePad = 'P';
 }
 
 #endif
