@@ -9,10 +9,10 @@
 
 class net
 {
-    channelID sourceChannel;
-    std::string sourceBlockName;
-    unsigned short index;
-    std::map<std::string, std::stack<std::pair<channelID, unsigned char>>> connectedPinsAndTheirRouting;
+    channelID sourceChannel{};
+    std::string sourceBlockName{};
+    unsigned short index{};
+    std::map<std::string, std::stack<std::pair<channelID, unsigned char>>> connectedPinsAndTheirRouting{};
 
 public:
     net();

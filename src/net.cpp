@@ -3,10 +3,7 @@
 #include <cassert>
 #include <iostream>
 
-net::net()
-{
-    net::connectedPinsAndTheirRouting = std::map<std::string, std::stack<std::pair<channelID, unsigned char>>>();
-}
+net::net() {}
 
 channelID net::getSourceChannel()
 {
@@ -56,6 +53,7 @@ void net::setConnectedPin(std::string name)
 
 void net::setConnection(std::string reachedBlock, std::stack<std::pair<channelID, unsigned char>> connectionToSink)
 {
+    assert(connectedPinsAndTheirRouting.contains(reachedBlock));
     connectedPinsAndTheirRouting.find(reachedBlock)->second = connectionToSink;
 }
 

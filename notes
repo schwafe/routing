@@ -1,19 +1,16 @@
-TODO .global bei .net Datein beachten und bei Ausgabe als Netz auflisten.
-TODO check for EOF (placementFile.eofbit)
+TODO .global bei Ausgabe als Netz auflisten.
 TODO check for lines that continue - they end in '\' and there is no '#' in the line before that
-TODO private access to variables of net class
-TODO ressourcenoptimierung? (std::move, weniger copy, mehr &, etc.)
-TODO channelID als shared_ptr?
-TODO Einträge der Pins in Kanälen (bis zu zwei pro Kanal) für jeden Durchlauf des Algorithmus als eigene Struktur, statt Set?
-TODO Welle fertig propagieren, um zu überprüfen, ob mehrere Pins in gleicher Reichweite sind?
-TODO gleiche Spur weiterverwenden oder anderes Auswahlverfahren? langsamer, weil jedes Mal gesucht werden muss welche Spur frei ist
+TODO output should be ordered by index - currently correct, bc order of netsByNameOfTheNet and netsByNameOfTheSourceBlock is the same, since the names are the same
 
-TODO clock immer global?
-TODO Sawitzki fragen: kann ich subblocks bei .net Datein ignorieren, solange ich mich auf eine Architektur ohne Cluster beschränke? manual_430 sagt ja
-   "VPR needs the subblock information in a netlist only for timing analysis" - für mich reicht die Info, ob Clock an den clb angeschlossen ist oder nicht
+TODO ressourcenoptimierung? (mehr std::move, emplace, &-Zugriff, etc. - weniger copy)
+TODO zentraler Speicher für ChannelIDs? ids.get(x,y,type)?
+TODO Einträge der Pins in Kanälen (bis zu zwei pro Kanal) für jeden Durchlauf des Algorithmus als eigene Struktur, statt Set?
+TODO nach nicht value-initialized variablen suchen
+
+TODO Welle fertig propagieren, um zu überprüfen, ob mehrere Pins in gleicher Reichweite sind?
 TODO Beibehaltung der Wellenfront?
-   erfordert eine Neuberechnung vieler Indizes nach dem Erreichen eines Anschlusses
-TODO Vorsortierung der Netze?
+TODO gleiche Spur weiterverwenden oder anderes Auswahlverfahren? langsamer, weil jedes Mal gesucht werden muss welche Spur frei ist
+TODO Vorsortierung der Netze? - erfordert eine Neuberechnung vieler Indizes nach dem Erreichen eines Anschlusses
 
 Erster Ansatz ist eine Rasterverdrahtung.
 

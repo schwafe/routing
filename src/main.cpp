@@ -1,3 +1,5 @@
+// #define NDEBUG TODO enable for last version
+
 #include <iostream>
 #include <fstream>
 #include <regex>
@@ -41,7 +43,7 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
         {
             blockName = matches[1];
 
-            std::shared_ptr<block> p_block = std::make_shared<block>('c');
+            std::shared_ptr<block> p_block = std::make_shared<block>(constants::blockTypeCLB);
             blocks.insert(std::make_pair(blockName, p_block));
 
             std::getline(netFile, line);
@@ -93,7 +95,7 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
         else if (std::regex_match(line, matches, constants::outputPattern))
         {
             blockName = matches[1];
-            blocks.insert(std::make_pair(blockName, std::make_shared<block>('p')));
+            blocks.insert(std::make_pair(blockName, std::make_shared<block>(constants::blockTypeOutput)));
 
             std::getline(netFile, line);
             std::regex_match(line, matches, constants::padPinPattern);
@@ -117,7 +119,7 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
         else if (std::regex_match(line, matches, constants::inputPattern))
         {
             blockName = matches[1];
-            std::shared_ptr<block> p_block = std::make_shared<block>('p');
+            std::shared_ptr<block> p_block = std::make_shared<block>(constants::blockTypeInput);
 
             blocks.insert(std::make_pair(blockName, p_block));
 
@@ -168,13 +170,16 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
 
     /*     for (std::string netName : netsConnectedToClock)
         {
+            assert(outputBlockNameByNameOfTheNet.contains(netName));
             std::string outputBlockName = outputBlockNameByNameOfTheNet.find(netName)->second;
+            assert(blocks.contains(outputBlockName));
             std::shared_ptr<block> p_block = blocks.find(outputBlockName)->second;
             blocksConnectedToClock.insert(std::make_pair(outputBlockName, std::make_pair(0, p_block)));
         }
 
         if (clockName != "")
         {
+            assert(netsByNameOfTheNet.contains(clockName) && netsByNameOfTheSourceBlock.contains(clockName))
             netsByNameOfTheNet.erase(clockName);
             netsByNameOfTheSourceBlock.erase(inputBlockNameByNameOfTheNet.find(clockName)->second);
         } */
@@ -219,28 +224,33 @@ void readPlace(std::string fileName, unsigned char &arraySize, std::map<std::str
             unsigned char y = std::stoi(matches[3]);
             std::string blockName = matches[1];
 
-            blocks.find(blockName)->second->initialise(x, y, std::stoi(matches[4]));
-            char blockType = blocks.find(blockName)->second->getType();
+            assert(blocks.contains(blockName));
+            std::shared_ptr<block> p_block = blocks.find(blockName)->second;
+            p_block->initialise(x, y, std::stoi(matches[4]));
 
-            channelID sourceChannel;
-            if (blockType == 'c' || y == arraySize + 1)
+            if (p_block->getType() != constants::blockTypeOutput)
             {
-                sourceChannel = channelID(x, y - 1, constants::channelTypeX);
-            }
-            else if (x == 0)
-            {
-                sourceChannel = channelID(x, y, constants::channelTypeY);
-            }
-            else if (x == arraySize + 1)
-            {
-                sourceChannel = channelID(x - 1, y, constants::channelTypeY);
-            }
-            else if (y == 0)
-            {
-                sourceChannel = channelID(x, y, constants::channelTypeX);
-            }
+                channelID sourceChannel;
+                if (p_block->getType() == constants::blockTypeCLB || y == arraySize + 1)
+                {
+                    sourceChannel = channelID(x, y - 1, constants::channelTypeX);
+                }
+                else if (x == 0)
+                {
+                    sourceChannel = channelID(x, y, constants::channelTypeY);
+                }
+                else if (x == arraySize + 1)
+                {
+                    sourceChannel = channelID(x - 1, y, constants::channelTypeY);
+                }
+                else if (y == 0)
+                {
+                    sourceChannel = channelID(x, y, constants::channelTypeX);
+                }
 
-            netsByNameOfTheSourceBlock.find(matches[1])->second->setSourceChannel(sourceChannel);
+                assert(netsByNameOfTheSourceBlock.contains(blockName));
+                netsByNameOfTheSourceBlock.find(blockName)->second->setSourceChannel(sourceChannel);
+            }
         }
 
     } while (!(line.empty() && placeFile.eofbit));
@@ -255,24 +265,33 @@ void writeRouting(const std::string &fileName, unsigned char &arraySize, auto &n
 
     routingFile << "Array size: " << +arraySize << " x " << +arraySize << " logic blocks.\n\nRouting:\n";
 
-    // TODO order incorrect - should be ordered by index
     for (auto &netEntry : netsByNameOfTheNet)
     {
         std::shared_ptr<net> p_net = netEntry.second;
 
         routingFile << "\nNet " << p_net->getIndex() << " (" << netEntry.first << ")\n\n";
 
+        assert(blocks.contains(p_net->getSourceBlockName()));
         std::shared_ptr<block> p_sourceBlock = blocks.find(p_net->getSourceBlockName())->second;
         unsigned char x = p_sourceBlock->getX();
         unsigned char y = p_sourceBlock->getY();
         unsigned char subblockNumber = p_sourceBlock->getSubblockNumber();
 
-        routingFile << "SOURCE" << "(" << +x << "," << +y << ")  Pad: " << +subblockNumber << "  \n";
+        routingFile << "SOURCE (" << +x << "," << +y << ")  ";
+        if (p_sourceBlock->getType() == constants::blockTypeCLB)
+            routingFile << "Class: " << +constants::outputPinClass << "  \n";
+        else
+            routingFile << "Pad: " << +subblockNumber << "  \n";
 
-        routingFile << "  OPIN" << "(" << +x << "," << +y << ")  Pad: " << +subblockNumber << "  \n";
+        routingFile << "  OPIN (" << +x << "," << +y << ")  ";
+        if (p_sourceBlock->getType() == constants::blockTypeCLB)
+            routingFile << "Pin: " << +constants::outputPinNumber << "  \n";
+        else
+            routingFile << "Pad: " << +subblockNumber << "  \n";
 
         for (auto &connectionEntry : p_net->getConnectedPinBlockNamesAndTheirRouting())
         {
+            assert(blocks.contains(connectionEntry.first));
             std::shared_ptr<block> p_block = blocks.find(connectionEntry.first)->second;
             std::stack<std::pair<channelID, unsigned char>> connection = connectionEntry.second;
             channelID channel;

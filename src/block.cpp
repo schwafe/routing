@@ -1,10 +1,10 @@
+#include <cassert>
 #include "block.hpp"
 #include "constants.hpp"
 
 block::block(char type)
 {
     block::type = type;
-    block::openChannels = std::set<channelID>();
 }
 
 void block::initialise(unsigned char x, unsigned char y, unsigned char subblockNumber)
@@ -14,7 +14,7 @@ void block::initialise(unsigned char x, unsigned char y, unsigned char subblockN
     block::subblockNumber = subblockNumber;
 
     std::set<channelID> channels;
-    if (type == 'c')
+    if (type == constants::blockTypeCLB)
     {
         channels.emplace(x, y, constants::channelTypeX);
         channels.emplace(x, y, constants::channelTypeY);
@@ -70,6 +70,7 @@ std::set<channelID> block::getOpenChannels()
 
 void block::setChannelTaken(channelID channel)
 {
+    assert(openChannels.contains(channel));
     openChannels.erase(channel);
 }
 
@@ -78,23 +79,23 @@ unsigned char block::determinePinNumber(channelID channel)
     unsigned char number = -1;
     if (channel.getYCoordinate() != y)
     {
-        number = 0;
+        number = constants::lowerInputPinNumber;
     }
     else
     {
         if (channel.getXCoordinate() != x)
         {
-            number = 1;
+            number = constants::leftInputPinNumber;
         }
         else
         {
             if (channel.getType() == constants::channelTypeX)
             {
-                number = 2;
+                number = constants::upperInputPinNumber;
             }
             else
             {
-                number = 3;
+                number = constants::rightInputPinNumber;
             }
         }
     }

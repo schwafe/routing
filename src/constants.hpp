@@ -32,11 +32,22 @@ namespace constants {
     const std::regex commentPattern("^\\s*#.*");
     const std::regex placePattern("^(\\S+)\\s+(\\d+)\\s+(\\d+)\\s+(\\d)\\s");
 
-    const unsigned char channelTypeY = 'Y';
-    const unsigned char channelTypeX = 'X';
+    const char channelTypeY = 'Y';
+    const char channelTypeX = 'X';
 
-    const unsigned char blockTypeCLB = 'C';
-    const unsigned char blockTypePad = 'P';
+    const char blockTypeCLB = 'C';
+    const char blockTypeInput = 'I';
+    const char blockTypeOutput = 'O';
+
+    const unsigned char inputPinClass = 0;
+    const unsigned char outputPinClass = 1;
+    const unsigned char lowerInputPinNumber = 0;
+    const unsigned char leftInputPinNumber = 1;
+    const unsigned char rightInputPinNumber = 2;
+    const unsigned char upperInputPinNumber = 3;
+    const unsigned char outputPinNumber = 4;
+
+    const unsigned char indexZero = 0;
 }
 
 #endif

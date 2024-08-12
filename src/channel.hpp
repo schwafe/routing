@@ -7,8 +7,8 @@
 
 class channelInfo
 {
-    unsigned char usedTracks;
-    std::bitset<2> tracks;
+    unsigned char usedTracks{};
+    std::bitset<2> tracks{};
 
 public:
     bool isFull(unsigned char maxTracks);
@@ -18,9 +18,9 @@ public:
 
 class channelID
 {
-    unsigned char x;
-    unsigned char y;
-    char type; // x or y - horizontal or vertical - channel
+    unsigned char x{};
+    unsigned char y{};
+    char type{}; // x or y - horizontal or vertical - channel
 
 public:
     auto operator<=>(channelID const &rhs) const = default;
@@ -31,11 +31,8 @@ public:
     char getType();
     std::set<channelID> getNeighbours(unsigned char arraySize);
     channelID chooseNeighbour(unsigned char arraySize, std::map<channelID, unsigned char> &indices, unsigned char expectedIndex, std::map<channelID, channelInfo> &channelInformation);
-    channelID chooseSameTypeNeighbours(unsigned char arraySize, std::map<channelID, unsigned char> &indices, unsigned char expectedIndex, std::map<channelID, channelInfo> &channelInformation);
-    channelID chooseOtherTypeNeighbours(unsigned char arraySize, std::map<channelID, unsigned char> &indices, unsigned char expectedIndex, std::map<channelID, channelInfo> &channelInformation);
 };
 
 std::map<channelID, channelInfo> generateChannelInformation(unsigned char arraySize);
-unsigned char useChannel(channelID &channel, std::map<channelID, channelInfo> &channelInformation);
 
 #endif
