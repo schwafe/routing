@@ -4,6 +4,7 @@
 block::block(char type)
 {
     block::type = type;
+    block::openChannels = std::set<channelID>();
 }
 
 void block::initialise(unsigned char x, unsigned char y, unsigned char subblockNumber)

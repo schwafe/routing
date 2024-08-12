@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <regex>
+#include <cassert>
 #include "constants.hpp"
 #include "channel.hpp"
 #include "routing.hpp"
@@ -21,20 +22,19 @@ void failIfInvalidRead(bool valid, std::string failMessage)
 }
 
 void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> &netsByNameOfTheSourceBlock, std::map<std::string, std::shared_ptr<net>> &netsByNameOfTheNet,
-             std::map<std::string, std::shared_ptr<block>> &blocks, std::map<std::string, std::pair<unsigned short, std::shared_ptr<block>>> &blocksConnectedToClock, std::string &clockName)
+             std::map<std::string, std::shared_ptr<block>> &blocks)
 {
-    std::cout << "0";
-    std::string line;
     std::ifstream netFile;
     netFile.open(constants::netPrefix + fileName + constants::netSuffix);
 
     std::map<std::string, std::string> inputBlockNameByNameOfTheNet;
     std::map<std::string, std::string> outputBlockNameByNameOfTheNet;
-    std::set<std::string> netsConnectedToClock;
+    // std::set<std::string> netsConnectedToClock;
+
+    std::string line;
 
     while (std::getline(netFile, line))
     {
-        std::cout << "1";
         std::smatch matches;
         std::string blockName;
         if (std::regex_match(line, matches, constants::clbPattern))
@@ -46,8 +46,9 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
 
             std::getline(netFile, line);
             std::regex_match(line, matches, constants::clbPinPattern);
-            for (unsigned char index = 1; index < 4; index++)
+            for (unsigned char index = 1; index <= 4; index++)
             {
+                // TODO make sure this matches correctly
                 if (matches[index] != "open")
                 {
                     if (netsByNameOfTheNet.contains(matches[index]))
@@ -58,7 +59,7 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
                     {
                         std::shared_ptr<net> p_net = std::make_shared<net>();
                         p_net->setConnectedPin(blockName);
-                        netsByNameOfTheNet.insert(std::make_pair(matches[index], std::move(p_net)));
+                        netsByNameOfTheNet.insert(std::make_pair(matches[index], p_net));
                     }
                 }
             }
@@ -74,13 +75,13 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
                 netsByNameOfTheNet.insert(std::make_pair(matches[5], p_net));
             }
             p_net->setSourceBlockName(blockName);
-            netsByNameOfTheSourceBlock.insert(std::make_pair(blockName, std::move(p_net)));
+            netsByNameOfTheSourceBlock.insert(std::make_pair(blockName, p_net));
 
-            if (matches[6] != "open")
-            {
-                blocksConnectedToClock.insert(std::make_pair(blockName, std::pair<unsigned short, std::shared_ptr<block>>(0, std::move(p_block))));
-                netsConnectedToClock.insert(matches[5]);
-            }
+            /*             if (matches[6] != "open")
+                        {
+                            blocksConnectedToClock.insert(std::make_pair(blockName, std::make_pair(0, p_block)));
+                            netsConnectedToClock.insert(matches[5]);
+                        } */
 
             // for a simple architecture (at most one 4-LUT + one FF per clb) subblock line does not provide additional information
             std::getline(netFile, line);
@@ -107,7 +108,7 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
             {
                 std::shared_ptr<net> p_net = std::make_shared<net>();
                 p_net->setConnectedPin(blockName);
-                netsByNameOfTheNet.insert(std::make_pair(matches[1], std::move(p_net)));
+                netsByNameOfTheNet.insert(std::make_pair(matches[1], p_net));
             }
 
             std::getline(netFile, line);
@@ -136,20 +137,20 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
                 netsByNameOfTheNet.insert(std::make_pair(matches[1], p_net));
             }
             p_net->setSourceBlockName(blockName);
-            netsByNameOfTheSourceBlock.insert(std::make_pair(blockName, std::move(p_net)));
+            netsByNameOfTheSourceBlock.insert(std::make_pair(blockName, p_net));
 
-            if (matches[6] != "open")
-            {
-                blocksConnectedToClock.insert(std::make_pair(blockName, std::pair<unsigned short, std::shared_ptr<block>>(0, std::move(p_block))));
-                netsConnectedToClock.insert(matches[5]);
-            }
+            /*             if (matches[6] != "open")
+                        {
+                            blocksConnectedToClock.insert(std::make_pair(blockName, std::make_pair(0, p_block)));
+                            netsConnectedToClock.insert(matches[5]);
+                        } */
 
             std::getline(netFile, line);
             failIfInvalidRead(line.empty(), "No empty line after the pinlist line of input " + blockName);
         }
         else if (std::regex_match(line, matches, constants::globalPattern))
         {
-            clockName = matches[1];
+            /*             clockName = matches[1]; */
 
             std::getline(netFile, line);
             failIfInvalidRead(line.empty(), "No empty line after global declaration of " + blockName);
@@ -164,19 +165,19 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
             std::cout << "Netfile was successfully read!" << std::endl;
         }
     }
-    std::cout << "2123";
 
-    for (std::string netName : netsConnectedToClock)
-    {
-        std::string outputBlockName = outputBlockNameByNameOfTheNet.find(netName)->second;
-        blocksConnectedToClock.insert(std::make_pair(outputBlockName, std::make_pair(0, blocks.find(outputBlockName)->second)));
-    }
+    /*     for (std::string netName : netsConnectedToClock)
+        {
+            std::string outputBlockName = outputBlockNameByNameOfTheNet.find(netName)->second;
+            std::shared_ptr<block> p_block = blocks.find(outputBlockName)->second;
+            blocksConnectedToClock.insert(std::make_pair(outputBlockName, std::make_pair(0, p_block)));
+        }
 
-    if (clockName != "")
-    {
-        netsByNameOfTheNet.erase(clockName);
-        netsByNameOfTheSourceBlock.erase(inputBlockNameByNameOfTheNet.find(clockName)->second);
-    }
+        if (clockName != "")
+        {
+            netsByNameOfTheNet.erase(clockName);
+            netsByNameOfTheSourceBlock.erase(inputBlockNameByNameOfTheNet.find(clockName)->second);
+        } */
 
     netFile.close();
 }
@@ -254,23 +255,25 @@ void writeRouting(const std::string &fileName, unsigned char &arraySize, auto &n
 
     routingFile << "Array size: " << +arraySize << " x " << +arraySize << " logic blocks.\n\nRouting:\n";
 
+    // TODO order incorrect - should be ordered by index
     for (auto &netEntry : netsByNameOfTheNet)
     {
-        net net = *netEntry.second;
+        std::shared_ptr<net> p_net = netEntry.second;
 
-        routingFile << "\nNet " << net.getIndex() << " (" << netEntry.first << ")\n\n";
+        routingFile << "\nNet " << p_net->getIndex() << " (" << netEntry.first << ")\n\n";
 
-        unsigned char x = net.getSourceChannel().getXCoordinate();
-        unsigned char y = net.getSourceChannel().getYCoordinate();
-        unsigned char subblockNumber = blocks.find(net.getSourceBlockName())->second->getSubblockNumber();
+        std::shared_ptr<block> p_sourceBlock = blocks.find(p_net->getSourceBlockName())->second;
+        unsigned char x = p_sourceBlock->getX();
+        unsigned char y = p_sourceBlock->getY();
+        unsigned char subblockNumber = p_sourceBlock->getSubblockNumber();
 
-        routingFile << "SOURCE" << "(" << x << "," << y << "  Pad: " << +subblockNumber << "  \n";
+        routingFile << "SOURCE" << "(" << +x << "," << +y << ")  Pad: " << +subblockNumber << "  \n";
 
-        routingFile << "  OPIN" << "(" << x << "," << y << "  Pad: " << +subblockNumber << "  \n";
+        routingFile << "  OPIN" << "(" << +x << "," << +y << ")  Pad: " << +subblockNumber << "  \n";
 
-        for (auto &connectionEntry : net.getConnectedPinBlockNamesAndTheirRouting())
+        for (auto &connectionEntry : p_net->getConnectedPinBlockNamesAndTheirRouting())
         {
-            block block = *blocks.find(connectionEntry.first)->second;
+            std::shared_ptr<block> p_block = blocks.find(connectionEntry.first)->second;
             std::stack<std::pair<channelID, unsigned char>> connection = connectionEntry.second;
             channelID channel;
             do
@@ -281,16 +284,18 @@ void writeRouting(const std::string &fileName, unsigned char &arraySize, auto &n
                 connection.pop();
             } while (!connection.empty());
 
-            if (block.getType() == constants::blockTypeCLB)
+            if (p_block->getType() == constants::blockTypeCLB)
             {
-                routingFile << "  IPIN (" << block.getX() << ',' << block.getY() << ")  Pin: " << block.determinePinNumber(channel) << "  \n";
-                routingFile << "  SINK (" << block.getX() << ',' << block.getY() << ")  Class: 0  \n";
+                routingFile << "  IPIN (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pin: " << +p_block->determinePinNumber(channel) << "  \n";
+                routingFile << "  SINK (" << +p_block->getX() << ',' << +p_block->getY() << ")  Class: 0  \n";
             }
             else
             {
-                routingFile << "  IPIN (" << block.getX() << ',' << block.getY() << ")  Pad: 0  \n  SINK (" << block.getX() << ',' << block.getY() << ")  Pad: 0  \n\n";
+                routingFile << "  IPIN (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: 0  \n  SINK (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: 0  \n\n";
             }
         }
+        routingFile.close();
+        return;
     }
     routingFile.close();
 }
@@ -310,24 +315,29 @@ int main(int argc, char *argv[])
     std::map<std::string, std::pair<unsigned short, std::shared_ptr<block>>> blocksConnectedToClock;
 
     std::cout << "Reading net file!" << std::endl;
-    readNet(fileName, netsByNameOfTheSourceBlock, netsByNameOfTheNet, blocks, blocksConnectedToClock, clockName);
+    readNet(fileName, netsByNameOfTheSourceBlock, netsByNameOfTheNet, blocks);
 
+    std::cout << "Reading place file!" << std::endl;
     readPlace(fileName, arraySize, blocks, blocksConnectedToClock, netsByNameOfTheSourceBlock);
 
     unsigned char maxTracks = constants::startingValueMaxTracks;
 
+    assert(netsByNameOfTheNet.size() == netsByNameOfTheSourceBlock.size());
+
     std::cout << "arraySize: " << +arraySize << std::endl
               << "maxTracks: " << +maxTracks << std::endl
               << "netCount: " << netsByNameOfTheSourceBlock.size() << std::endl
-              << "block count: " << blocks.size() << std::endl
-              << "blocksConnectedToClock: " << blocksConnectedToClock.size() << std::endl
-              << "name of the clock: " << clockName << std::endl;
+              << "block count: " << blocks.size() << std::endl;
+    /*
+    << "blocksConnectedToClock: " << blocksConnectedToClock.size() << std::endl
+    << "name of the clock: " << clockName << std::endl; */
 
-    routeNets(arraySize, maxTracks, netsByNameOfTheSourceBlock, blocks, blocksConnectedToClock, clockName);
+    std::cout << "Routing nets!" << std::endl;
+    routeNets(arraySize, maxTracks, netsByNameOfTheSourceBlock, blocks);
     //  TODO try lower maxTracks values
 
+    std::cout << "Writing routing file!" << std::endl;
     writeRouting(fileName, arraySize, netsByNameOfTheNet, blocks);
 
-    // TODO bad_alloc and a segmentation fault if not bad_alloc - maybe when constructing map entries, the values are not copied, but actually use the references? would cause problems later on
     return constants::success;
 }

@@ -36,5 +36,6 @@ public:
 };
 
 std::map<channelID, channelInfo> generateChannelInformation(unsigned char arraySize);
+unsigned char useChannel(channelID &channel, std::map<channelID, channelInfo> &channelInformation);
 
 #endif

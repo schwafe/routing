@@ -231,3 +231,8 @@ std::map<channelID, channelInfo> generateChannelInformation(unsigned char arrayS
     }
     return channelInformation;
 }
+
+unsigned char useChannel(channelID &channel, std::map<channelID, channelInfo> &channelInformation)
+{
+    return channelInformation.find(channel)->second.useChannel();
+}

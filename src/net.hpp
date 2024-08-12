@@ -26,6 +26,8 @@ public:
     void setIndex(unsigned short index);
     void setConnectedPin(std::string blockName);
     void setConnection(std::string reachedBlock, std::stack<std::pair<channelID, unsigned char>> connectionToSink);
+    bool allPinsConnected();
+    std::string listConnectedBlocks();
 };
 
 #endif
