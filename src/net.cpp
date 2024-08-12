@@ -1,7 +1,7 @@
 #include "net.hpp"
-#include <iostream>
+
 #include <cassert>
-#include "constants.hpp"
+#include <iostream>
 
 net::net()
 {
@@ -56,26 +56,15 @@ void net::setConnectedPin(std::string name)
 
 void net::setConnection(std::string reachedBlock, std::stack<std::pair<channelID, unsigned char>> connectionToSink)
 {
-    assert(!connectionToSink.empty());
-    auto pair = std::make_pair(reachedBlock, std::stack(connectionToSink));
-    connectedPinsAndTheirRouting.insert(pair);
-        
-    assert(!connectionToSink.empty());
-    assert(!pair.second.empty());
-    assert(!connectedPinsAndTheirRouting.find(reachedBlock)->second.empty()); // <--fails
-    
-    connectedPinsAndTheirRouting.find(reachedBlock)->second.push(std::make_pair(channelID(1,2,constants::channelTypeX) , 0));
-    assert(!connectedPinsAndTheirRouting.find(reachedBlock)->second.empty()); // <--does not fail
+    connectedPinsAndTheirRouting.find(reachedBlock)->second = connectionToSink;
 }
 
 bool net::allPinsConnected()
 {
-    std::cout << "netsize: " << connectedPinsAndTheirRouting.size() << "o0 stacksize "<< (int) connectedPinsAndTheirRouting.find("o0")->second.size() <<std::endl;
     for (auto &entry : connectedPinsAndTheirRouting)
     {
         if (entry.second.empty())
         {
-            std::cout << "name: " << entry.first << std::endl;
             return false;
         }
     }

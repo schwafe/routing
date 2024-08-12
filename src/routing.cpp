@@ -158,7 +158,6 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &maxTracks, s
         indices.emplace(sourceChannel, 0);
         std::set<channelID> indexZeroChannels{sourceChannel};
 
-        std::cout << "net pin count: " << p_net->getPinCount() << std::endl;
         while (numberOfPinsReached < p_net->getPinCount())
         {
             channelID sink;
@@ -173,8 +172,6 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &maxTracks, s
             {
                 // 1-2 blocks
                 p_net->setConnection(blockName, connectionToSink);
-                assert(!connectionToSink.empty());
-                assert(!p_net->getConnectedPinBlockNamesAndTheirRouting().find(blockName)->second.empty());
             }
 
             std::cout << "pin reached!" << std::endl;

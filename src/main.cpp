@@ -280,7 +280,7 @@ void writeRouting(const std::string &fileName, unsigned char &arraySize, auto &n
             {
                 channel = connection.top().first;
 
-                routingFile << " CHAN" << channel.getType() << " (" << channel.getXCoordinate() << ',' << channel.getYCoordinate() << ")  Track: " << +connection.top().second << "  \n";
+                routingFile << " CHAN" << channel.getType() << " (" << +channel.getXCoordinate() << ',' << +channel.getYCoordinate() << ")  Track: " << +connection.top().second << "  \n";
                 connection.pop();
             } while (!connection.empty());
 
@@ -294,8 +294,6 @@ void writeRouting(const std::string &fileName, unsigned char &arraySize, auto &n
                 routingFile << "  IPIN (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: 0  \n  SINK (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: 0  \n\n";
             }
         }
-        routingFile.close();
-        return;
     }
     routingFile.close();
 }
