@@ -5,9 +5,9 @@
 #include "constants.hpp"
 #include "logging.hpp"
 
-bool channelInfo::isFull(unsigned char maxTracks)
+bool channelInfo::isFull(unsigned char channelwidth)
 {
-    return channelInfo::usedTracks == maxTracks;
+    return channelInfo::usedTracks == channelwidth;
 }
 
 unsigned char channelInfo::getUsedTracks()
@@ -92,6 +92,77 @@ std::set<channelID> channelID::getNeighbours(unsigned char arraySize)
     return neighbours;
 }
 
+channelID channelID::chooseNeighbour(const std::set<channelID> &validChannels, std::map<channelID, channelInfo> &channelInformation)
+{
+    channelID chosenNeighbour{};
+    channelID channelA, channelB;
+    if (channelID::type == constants::channelTypeX)
+    {
+        channelA = channelID(x - 1, y, constants::channelTypeX);
+        channelB = channelID(x + 1, y, constants::channelTypeX);
+    }
+    else
+    {
+        channelA = channelID(x, y - 1, constants::channelTypeY);
+        channelB = channelID(x, y + 1, constants::channelTypeY);
+    }
+
+    if (!validChannels.contains(channelA) && validChannels.contains(channelB))
+        return channelB;
+    else if (!validChannels.contains(channelB) && validChannels.contains(channelA))
+        return channelA;
+    else if (validChannels.contains(channelB) && validChannels.contains(channelA))
+    {
+        if (channelInformation.find(channelA)->second.getUsedTracks() <= channelInformation.find(channelB)->second.getUsedTracks())
+            return channelA;
+        else
+            return channelB;
+    }
+    else
+    {
+        // no same type neighbour was valid, so now other type neighbours are searched
+
+        std::set<channelID> neighbours{};
+        if (type == constants::channelTypeX)
+        {
+            neighbours.emplace(x - 1, y, constants::channelTypeY);
+            neighbours.emplace(x, y, constants::channelTypeY);
+            neighbours.emplace(x - 1, y + 1, constants::channelTypeY);
+            neighbours.emplace(x, y + 1, constants::channelTypeY);
+        }
+        else
+        {
+            neighbours.emplace(x, y - 1, constants::channelTypeX);
+            neighbours.emplace(x, y, constants::channelTypeX);
+            neighbours.emplace(x + 1, y - 1, constants::channelTypeX);
+            neighbours.emplace(x + 1, y, constants::channelTypeX);
+        }
+
+        unsigned char lowestAmount = std::numeric_limits<unsigned char>::max();
+        channelID chosenChannel{};
+
+        std::cout << "candidates: ";
+        for (channelID neighbour : neighbours)
+        {
+            if (validChannels.contains(neighbour))
+            {
+                std::cout << channelIDToString(neighbour) << ' ';
+                assert(channelInformation.contains(neighbour));
+                unsigned char used = channelInformation.find(neighbour)->second.getUsedTracks();
+                if (used < lowestAmount)
+                {
+                    lowestAmount = used;
+                    chosenChannel = neighbour;
+                }
+            }
+        }
+        std::cout << std::endl;
+
+        assert(chosenChannel.getType() != 0);
+        return chosenChannel;
+    }
+}
+
 channelID chooseSameTypeNeighbour(unsigned char arraySize, std::map<channelID, unsigned char> &indices, unsigned char expectedIndex, std::map<channelID, channelInfo> &channelInformation, channelID &channelA, channelID &channelB, unsigned char coordinate)
 {
     if (coordinate == arraySize || !indices.contains(channelB))
@@ -133,7 +204,7 @@ void insertIfValid(unsigned char x, unsigned char y, char type, std::map<channel
         candidates.insert(channel);
 }
 
-channelID channelID::chooseNeighbour(unsigned char arraySize, std::map<channelID, unsigned char> &indices, unsigned char expectedIndex, std::map<channelID, channelInfo> &channelInformation)
+channelID channelID::chooseNeighbour_old(unsigned char arraySize, std::map<channelID, unsigned char> &indices, unsigned char expectedIndex, std::map<channelID, channelInfo> &channelInformation)
 {
     channelID chosenNeighbour{};
     if (channelID::type == constants::channelTypeX)
@@ -182,7 +253,7 @@ channelID channelID::chooseNeighbour(unsigned char arraySize, std::map<channelID
 
         assert(candidates.size() != 0);
 
-        unsigned char lowestAmount = std::numeric_limits<char>::max();
+        unsigned char lowestAmount = std::numeric_limits<unsigned char>::max();
         for (channelID channel : candidates)
         {
             assert(channelInformation.contains(channel));
@@ -212,7 +283,7 @@ std::map<channelID, channelInfo> generateChannelInformation(unsigned char arrayS
     {
         for (int y = 0; y <= arraySize; y++)
         {
-            channelInformation.emplace(channelID(x, y, constants::channelTypeX), channelInfo());
+            channelInformation.emplace(channelID(x, y, constants::channelTypeX), channelInfo{});
         }
     }
 
@@ -220,8 +291,9 @@ std::map<channelID, channelInfo> generateChannelInformation(unsigned char arrayS
     {
         for (int y = 1; y <= arraySize; y++)
         {
-            channelInformation.emplace(channelID(x, y, constants::channelTypeY), channelInfo());
+            channelInformation.emplace(channelID(x, y, constants::channelTypeY), channelInfo{});
         }
     }
+
     return channelInformation;
 }

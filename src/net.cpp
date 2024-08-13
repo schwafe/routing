@@ -5,6 +5,15 @@
 
 net::net() {}
 
+net::net(const net &other)
+{
+    sourceBlockName = other.sourceBlockName;
+    sourceChannel = other.sourceChannel;
+
+    for (auto &entry : other.connectedPinsAndTheirRouting)
+        connectedPinsAndTheirRouting.emplace(entry.first, std::stack<std::pair<channelID, unsigned char>>{});
+}
+
 channelID net::getSourceChannel()
 {
     return sourceChannel;
@@ -47,8 +56,7 @@ void net::setIndex(unsigned short index)
 
 void net::setConnectedPin(std::string name)
 {
-    std::stack<std::pair<channelID, unsigned char>> emptyConnection = std::stack<std::pair<channelID, unsigned char>>();
-    net::connectedPinsAndTheirRouting.emplace(name, emptyConnection);
+    net::connectedPinsAndTheirRouting.emplace(name, std::stack<std::pair<channelID, unsigned char>>{});
 }
 
 void net::setConnection(std::string reachedBlock, std::stack<std::pair<channelID, unsigned char>> connectionToSink)
@@ -60,12 +68,9 @@ void net::setConnection(std::string reachedBlock, std::stack<std::pair<channelID
 bool net::allPinsConnected()
 {
     for (auto &entry : connectedPinsAndTheirRouting)
-    {
         if (entry.second.empty())
-        {
             return false;
-        }
-    }
+
     return true;
 }
 

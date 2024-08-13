@@ -295,6 +295,8 @@ void writeRouting(const std::string &fileName, unsigned char &arraySize, auto &n
             std::shared_ptr<block> p_block = blocks.find(connectionEntry.first)->second;
             std::stack<std::pair<channelID, unsigned char>> connection = connectionEntry.second;
             channelID channel;
+
+            assert(!connection.empty());
             do
             {
                 channel = connection.top().first;
@@ -310,11 +312,26 @@ void writeRouting(const std::string &fileName, unsigned char &arraySize, auto &n
             }
             else
             {
-                routingFile << "  IPIN (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: 0  \n  SINK (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: 0  \n\n";
+                routingFile << "  IPIN (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: 0  \n  SINK (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: " << p_block->getSubblockNumber() << "  \n\n";
             }
         }
     }
     routingFile.close();
+}
+
+void deepCopy(const std::map<std::string, std::shared_ptr<net>> &netsByNameOfTheSourceBlock, auto &copyOfNets, const std::map<std::string, std::shared_ptr<block>> &blocks, auto &copyOfBlocks)
+{
+    for (auto &entry : netsByNameOfTheSourceBlock)
+    {
+        net copy = *entry.second;
+        copyOfNets.emplace(entry.first, std::make_shared<net>(copy));
+    }
+
+    for (auto &entry : blocks)
+    {
+        block copy = *entry.second;
+        copyOfBlocks.emplace(entry.first, std::make_shared<block>(copy));
+    }
 }
 
 int main(int argc, char *argv[])
@@ -337,24 +354,50 @@ int main(int argc, char *argv[])
     std::cout << "Reading place file!" << std::endl;
     readPlace(fileName, arraySize, blocks, blocksConnectedToClock, netsByNameOfTheSourceBlock);
 
-    unsigned char maxTracks = constants::startingValueMaxTracks;
+    unsigned char channelwidth = constants::startingValuechannelwidth;
 
     assert(netsByNameOfTheNet.size() == netsByNameOfTheSourceBlock.size());
 
     std::cout << "arraySize: " << +arraySize << std::endl
-              << "maxTracks: " << +maxTracks << std::endl
+              << "channelwidth: " << +channelwidth << std::endl
               << "netCount: " << netsByNameOfTheSourceBlock.size() << std::endl
               << "block count: " << blocks.size() << std::endl;
     /*
     << "blocksConnectedToClock: " << blocksConnectedToClock.size() << std::endl
     << "name of the clock: " << clockName << std::endl; */
 
-    std::cout << "Routing nets!" << std::endl;
-    routeNets(arraySize, maxTracks, netsByNameOfTheSourceBlock, blocks);
-    //  TODO try lower maxTracks values
+    bool success{};
+    unsigned char successfulWidth = std::numeric_limits<unsigned char>::max();
+    std::map<std::string, std::shared_ptr<net>> tempNetsByNameOfTheSourceBlock{}, finalNetsByNameOfTheSourceBlock{};
+    std::map<std::string, std::shared_ptr<block>> tempBlocks{}, finalBlocks{};
+
+    // TODO trying again with a broader channelwidth fails early - 25k lines for 12 tracks, 250 for 13, 230 for 14, 27 for 15 und 2 for 16
+    do
+    {
+        std::cout << "\n----------------\nRouting nets with a channelwidth of " << +channelwidth << " tracks!" << std::endl;
+        deepCopy(netsByNameOfTheSourceBlock, tempNetsByNameOfTheSourceBlock, blocks, tempBlocks);
+        success = routeNets(arraySize, channelwidth, tempNetsByNameOfTheSourceBlock, tempBlocks);
+
+        if (success)
+        {
+            successfulWidth = channelwidth;
+            finalNetsByNameOfTheSourceBlock = tempNetsByNameOfTheSourceBlock;
+            finalBlocks = tempBlocks;
+            channelwidth = channelwidth / 2;
+            assert(channelwidth > 0);
+            std::cout << "Success! Trying again with a channelwidth of " << +channelwidth << " tracks!" << std::endl;
+        }
+        else
+        {
+            channelwidth++;
+            std::cout << "Failure! Trying again with a channelwidth of " << +channelwidth << " tracks!" << std::endl;
+        }
+
+        assert(channelwidth <= 16);
+    } while (success || blocks.empty() || channelwidth < successfulWidth);
 
     std::cout << "Writing routing file!" << std::endl;
-    writeRouting(fileName, arraySize, netsByNameOfTheNet, blocks);
+    writeRouting(fileName, arraySize, finalNetsByNameOfTheSourceBlock, finalBlocks);
 
     return constants::success;
 }

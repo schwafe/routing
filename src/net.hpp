@@ -5,17 +5,19 @@
 #include <set>
 #include <string>
 #include <stack>
+#include <limits>
 #include "channel.hpp"
 
 class net
 {
     channelID sourceChannel{};
     std::string sourceBlockName{};
-    unsigned short index{};
+    unsigned short index = std::numeric_limits<unsigned short>::max();
     std::map<std::string, std::stack<std::pair<channelID, unsigned char>>> connectedPinsAndTheirRouting{};
 
 public:
     net();
+    net(const net &other);
     unsigned short getPinCount();
     channelID getSourceChannel();
     std::string getSourceBlockName();

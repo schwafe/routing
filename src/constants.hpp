@@ -18,7 +18,7 @@ namespace constants {
     const unsigned char wrongArguments = 1;
     const unsigned char readFailure = 2;
 
-    const unsigned char startingValueMaxTracks = 12;
+    const unsigned char startingValuechannelwidth = 12;
 
     const std::regex globalPattern("^\\.global (\\S+)\\s*.*");
     const std::regex inputPattern("^\\.input (\\S+)\\s*.*");

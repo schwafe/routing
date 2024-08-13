@@ -2,15 +2,15 @@ TODO .global bei Ausgabe als Netz auflisten.
 TODO check for lines that continue - they end in '\' and there is no '#' in the line before that
 TODO output should be ordered by index - currently correct, bc order of netsByNameOfTheNet and netsByNameOfTheSourceBlock is the same, since the names are the same
 
-TODO ressourcenoptimierung? (mehr std::move, emplace, &-Zugriff, etc. - weniger copy)
+TODO ressourcenoptimierung (mehr std::move, emplace, &-Zugriff, etc. - weniger copy)
 TODO zentraler Speicher für ChannelIDs? ids.get(x,y,type)?
-TODO Einträge der Pins in Kanälen (bis zu zwei pro Kanal) für jeden Durchlauf des Algorithmus als eigene Struktur, statt Set?
+TODO Einträge der Pins in Kanälen [reachedBlocks] (bis zu zwei pro Kanal) für jeden Durchlauf des Algorithmus als eigene Struktur, statt Set?
 TODO nach nicht value-initialized variablen suchen
+TODO chosenChannel.getType() != 0 ersetzen mit Funktion, die anhand des Namens leichter zu verstehen ist,
 
-TODO Welle fertig propagieren, um zu überprüfen, ob mehrere Pins in gleicher Reichweite sind?
-TODO Beibehaltung der Wellenfront?
 TODO gleiche Spur weiterverwenden oder anderes Auswahlverfahren? langsamer, weil jedes Mal gesucht werden muss welche Spur frei ist
-TODO Vorsortierung der Netze? - erfordert eine Neuberechnung vieler Indizes nach dem Erreichen eines Anschlusses
+TODO Vorsortierung der Netze?
+TODO vpr schafft ex5p mit 12 Kanälen - mein Programm bisher nicht
 
 Erster Ansatz ist eine Rasterverdrahtung.
 

@@ -9,16 +9,16 @@ std::string channelIDToString(channelID channel)
 
 void printIndices(std::map<channelID, unsigned char> indices)
 {
-    std::cout << "Indices (x,y,type) - index:" << std::endl;
+    std::cout << std::endl << "Indices (x,y,type) - index:" << std::endl;
     for (auto &entry : indices)
         std::cout << channelIDToString(entry.first) << " - " << +entry.second << std::endl;
     std::cout << std::endl;
 }
 
-void printConnections(net net)
+void printConnections(std::shared_ptr<net> p_net)
 {
-    std::cout << "net sourceBlockName: '" << net.getSourceBlockName() << "' size: " << net.getPinCount() << std::endl;
-    for (auto &entry : net.getConnectedPinBlockNamesAndTheirRouting())
+    std::cout << "net sourceBlockName: '" << p_net->getSourceBlockName() << "' size: " << p_net->getPinCount() << std::endl;
+    for (auto &entry : p_net->getConnectedPinBlockNamesAndTheirRouting())
     {
         std::stack<std::pair<channelID, unsigned char>> connection{entry.second};
         assert(!connection.empty());

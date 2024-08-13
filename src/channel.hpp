@@ -11,7 +11,7 @@ class channelInfo
     std::bitset<2> tracks{};
 
 public:
-    bool isFull(unsigned char maxTracks);
+    bool isFull(unsigned char channelwidth);
     unsigned char getUsedTracks();
     unsigned char useChannel();
 };
@@ -30,7 +30,9 @@ public:
     unsigned char getYCoordinate();
     char getType();
     std::set<channelID> getNeighbours(unsigned char arraySize);
-    channelID chooseNeighbour(unsigned char arraySize, std::map<channelID, unsigned char> &indices, unsigned char expectedIndex, std::map<channelID, channelInfo> &channelInformation);
+    //TODO remove
+    channelID chooseNeighbour_old(unsigned char arraySize, std::map<channelID, unsigned char> &indices, unsigned char expectedIndex, std::map<channelID, channelInfo> &channelInformation);
+    channelID chooseNeighbour(const std::set<channelID> &validChannels, std::map<channelID, channelInfo> &channelInformation);
 };
 
 std::map<channelID, channelInfo> generateChannelInformation(unsigned char arraySize);

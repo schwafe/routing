@@ -10,11 +10,12 @@ class block
     char type{}; // C for CLB, P for pad
     unsigned char x{};
     unsigned char y{};
-    unsigned char subblockNumber = std::numeric_limits<char>::max(); // only relevant if type is pad
+    unsigned char subblockNumber = std::numeric_limits<unsigned char>::max(); // only relevant if type is pad
     std::set<channelID> openChannels{};
 
 public:
     block(char type);
+    block(const block &other);
     void initialise(unsigned char x, unsigned char y, unsigned char subblockNumber);
     char getType();
     unsigned char getX();

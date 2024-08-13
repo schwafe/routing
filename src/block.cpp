@@ -7,6 +7,15 @@ block::block(char type)
     block::type = type;
 }
 
+block::block(const block &other)
+{
+    type = other.type;
+    x = other.x;
+    y = other.y;
+    subblockNumber = other.subblockNumber;
+    openChannels = std::set<channelID>(other.openChannels);
+}
+
 void block::initialise(unsigned char x, unsigned char y, unsigned char subblockNumber)
 {
     block::x = x;
