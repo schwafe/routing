@@ -4,14 +4,13 @@
 #include "block.hpp"
 #include "logging.hpp"
 #include "constants.hpp"
+#include "net.hpp"
 
-std::map<channelID, std::set<std::string>> generateRelevantChannels(std::shared_ptr<net> p_net, std::map<std::string, std::shared_ptr<block>> &blocks)
+std::map<channelID, std::set<std::string>> generateRelevantChannels(std::shared_ptr<net> p_net, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     std::map<channelID, std::set<std::string>> relevantChannels;
-    for (auto &connectedPinEntry : p_net->getConnectedPinBlockNamesAndTheirRouting())
+    for (std::string sinkBlockName : p_net->getSinkBlockNames())
     {
-        std::string sinkBlockName = connectedPinEntry.first;
-
         assert(blocks.contains(sinkBlockName));
         for (channelID channel : blocks.find(sinkBlockName)->second->getOpenChannels())
         {
@@ -53,7 +52,7 @@ void registerIndex(std::map<channelID, unsigned char> &channelToIndex, std::map<
 channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, const unsigned char &arraySize, unsigned char &indexOfSink,
                    const unsigned char &channelwidth, auto &channelInformation, auto &relevantChannels, unsigned short &numberOfPinsReached, std::set<std::string> &reachedBlocks, const auto &blocks)
 {
-    // TODO test
+    // TODO test (probably first simplify it?)
 
     std::set<channelID> processedChannels{};
     unsigned char index = constants::indexZero;
@@ -114,7 +113,7 @@ channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<
     return channelID{};
 }
 
-void useChannel(const channelID &channel, std::shared_ptr<net> p_net, auto &channelInformation, std::stack<std::pair<channelID, unsigned char>> &connectionToSink,
+void useChannel(const channelID &channel, std::shared_ptr<net> p_net, auto &channelInformation, std::vector<std::pair<channelID, unsigned char>> &connectionToSink,
                 std::set<channelID> &usedChannels, unsigned char &currentTrack)
 {
     assert(channelInformation.contains(channel));
@@ -127,22 +126,22 @@ void useChannel(const channelID &channel, std::shared_ptr<net> p_net, auto &chan
         p_net->setUsedTrack(channel, currentTrack);
     }
 
-    connectionToSink.emplace(channel, currentTrack);
+    connectionToSink.emplace_back(channel, currentTrack);
     usedChannels.insert(channel);
 }
 
-std::stack<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize, auto &channelToIndex, auto &indexToChannels, std::shared_ptr<net> p_net, const channelID &sink,
-                                                        unsigned char &indexOfSink, auto &channelInformation)
+std::vector<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize, auto &channelToIndex, auto &indexToChannels, std::shared_ptr<net> p_net, const channelID &sink,
+                                                         unsigned char &indexOfSink, auto &channelInformation)
 {
-    assert(sink.getType() != 0);
+    assert(sink.isInitialized());
 
     std::set<channelID> usedChannels{};
-    std::stack<std::pair<channelID, unsigned char>> connectionToSink{};
+    std::vector<std::pair<channelID, unsigned char>> connectionToSink{};
     unsigned char currentTrack = std::numeric_limits<unsigned char>::max();
 
     useChannel(sink, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
-    std::cout << "-------------\nsink: " << channelIDToString(sink) << std::endl;
+    std::cout << "-------------\nsink: " << channelIDToString(sink) << '\n';
 
     // printIndices(channelToIndex);
 
@@ -152,11 +151,11 @@ std::stack<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize,
     do
     {
         expectedIndex--;
-        std::cout << "expected Index: " << +expectedIndex << std::endl;
+        std::cout << "expected Index: " << +expectedIndex << '\n';
 
         assert(indexToChannels.contains(expectedIndex));
         channelID chosenChannel = currentChannel.chooseNeighbour(indexToChannels.find(expectedIndex)->second, channelInformation);
-        std::cout << "chosenChannel:" << channelIDToString(chosenChannel) << std::endl;
+        std::cout << "chosenChannel:" << channelIDToString(chosenChannel) << '\n';
 
         useChannel(chosenChannel, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
@@ -171,20 +170,15 @@ std::stack<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize,
 
 /* @return false if a net could not be routed with the given channelwidth, true if all nets were routed successfully
  */
-bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth, std::map<std::string, std::shared_ptr<net>> &netsByNameOfTheSourceBlock,
-               std::map<std::string, std::shared_ptr<block>> &blocks)
+bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth, std::vector<std::shared_ptr<net>> const &sortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     std::map<channelID, channelInfo> channelInformation = generateChannelInformation(arraySize);
 
-    unsigned short netIndex{};
-    for (auto &netEntry : netsByNameOfTheSourceBlock)
+    for (unsigned short index = 0; index < sortedNets.size(); index++)
     {
-        std::string sourceBlockName = netEntry.first;
-        std::shared_ptr<net> p_net = netEntry.second;
+        std::shared_ptr<net> p_net = sortedNets[index];
 
-        // TODO for ex5p, before writing the routing file, "Routing net with sourceBlockName '[101]' and sink-blocks: '[3856]'" was printed 111 times!
-        std::cout << "Routing net with sourceBlockName '" << sourceBlockName << "' and sink-blocks: '" << p_net->listConnectedBlocks() << "'" << std::endl;
-        p_net->setIndex(netIndex);
+        std::cout << "Routing net with sourceBlockName '" << p_net->getSourceBlockName() << "' and sink-blocks: '" << p_net->listConnectedBlocks() << "'\n";
 
         channelID sourceChannel = p_net->getSourceChannel();
         assert(channelInformation.contains(sourceChannel));
@@ -207,12 +201,15 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
         if (relevantChannels.contains(sourceChannel))
         {
             std::set<channelID> usedChannels{};
-            std::stack<std::pair<channelID, unsigned char>> connectionToSink{};
+            std::vector<std::pair<channelID, unsigned char>> connectionToSink{};
             unsigned char currentTrack = std::numeric_limits<unsigned char>::max();
 
             useChannel(sourceChannel, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
-            for (std::string associatedBlockName : relevantChannels.find(sourceChannel)->second)
+            std::set<std::string> associatedBlockNames = relevantChannels.find(sourceChannel)->second;
+            assert(associatedBlockNames.size() == 1);
+
+            for (std::string associatedBlockName : associatedBlockNames)
             {
                 p_net->setConnection(associatedBlockName, connectionToSink);
 
@@ -220,33 +217,33 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
                 std::shared_ptr<block> p_block = blocks.find(associatedBlockName)->second;
                 p_block->setChannelTaken(sourceChannel);
                 removeOtherChannelEntries(relevantChannels, associatedBlockName, p_block->getOpenChannels());
+
+                std::cout << "pin of block '" << associatedBlockName << "' at source channel!\n";
+                numberOfPinsReached++;
             }
-            numberOfPinsReached++;
-            std::cout << "pin at source channel!" << std::endl;
         }
 
-        while (numberOfPinsReached < p_net->getPinCount())
+        while (numberOfPinsReached < p_net->getSinkBlockCount())
         {
             std::set<std::string> reachedBlocks;
             unsigned char indexOfSink{};
             channelID sink = findSink(channelToIndex, indexToChannels, arraySize, indexOfSink, channelwidth, channelInformation, relevantChannels, numberOfPinsReached, reachedBlocks, blocks);
-            if (sink.getType() == 0)
+            if (!sink.isInitialized())
                 return false;
 
-            std::stack<std::pair<channelID, unsigned char>> connectionToSink = retrace(arraySize, channelToIndex, indexToChannels, p_net, sink, indexOfSink, channelInformation);
+            std::vector<std::pair<channelID, unsigned char>> connectionToSink = retrace(arraySize, channelToIndex, indexToChannels, p_net, sink, indexOfSink, channelInformation);
 
             assert(reachedBlocks.size() != 0);
             for (std::string blockName : reachedBlocks)
             {
-                std::cout << "reached block '" << blockName << "'" << std::endl;
+                std::cout << "reached block '" << blockName << "'\n";
                 // 1-2 blocks
                 p_net->setConnection(blockName, connectionToSink);
             }
         }
-        std::cout << "------------------------------ net (sourceBlockName '" << sourceBlockName << "' - size: '" << p_net->getPinCount() << "') routed!" << std::endl;
-        // printConnections(p_net);
+        std::cout << "------------------------------ net (sourceBlockName '" << p_net->getSourceBlockName() << "' - size: '" << p_net->getSinkBlockCount() << "') routed!\n";
+
         assert(p_net->allPinsConnected());
-        netIndex++;
     }
 
     return true;

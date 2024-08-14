@@ -29,6 +29,7 @@ public:
     channelID(unsigned char x, unsigned char y, char type);
     channelID();
 
+    bool isInitialized() const;
     unsigned char getXCoordinate() const;
     unsigned char getYCoordinate() const;
     char getType() const;

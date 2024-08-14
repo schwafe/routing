@@ -9,25 +9,25 @@ std::string channelIDToString(channelID channel)
 
 void printIndices(std::map<channelID, unsigned char> indices)
 {
-    std::cout << std::endl << "Indices (x,y,type) - index:" << std::endl;
+    std::cout << '\n'
+              << "Indices (x,y,type) - index:" << '\n';
     for (auto &entry : indices)
-        std::cout << channelIDToString(entry.first) << " - " << +entry.second << std::endl;
+        std::cout << channelIDToString(entry.first) << " - " << +entry.second << '\n';
+    std::cout << '\n';
     std::cout << std::endl;
 }
 
 void printConnections(std::shared_ptr<net> p_net)
 {
-    std::cout << "net sourceBlockName: '" << p_net->getSourceBlockName() << "' size: " << p_net->getPinCount() << std::endl;
-    for (auto &entry : p_net->getConnectedPinBlockNamesAndTheirRouting())
+    std::cout << "net sourceBlockName: '" << p_net->getSourceBlockName() << "' size: " << p_net->getSinkBlockCount() << '\n';
+    for (auto &entry : p_net->getConnectionsByRoutingOrder())
     {
-        std::stack<std::pair<channelID, unsigned char>> connection{entry.second};
+        std::vector<std::pair<channelID, unsigned char>> connection{entry.second};
         assert(!connection.empty());
 
-        std::cout << "\tsinkBlockName: '" << entry.first << "'" << std::endl;
-        do
-        {
-            std::cout << "\t\t" << channelIDToString(connection.top().first) << " - " << +connection.top().second << std::endl;
-            connection.pop();
-        } while (!connection.empty());
+        std::cout << "\tsinkBlockName: '" << entry.first << "'" << '\n';
+        for (std::pair<channelID, unsigned char> connectionPair : connection)
+            std::cout << "\t\t" << channelIDToString(connectionPair.first) << " - " << +connectionPair.second << '\n';
     }
+    std::cout << std::endl;
 }

@@ -3,15 +3,22 @@
 #include <cassert>
 #include <iostream>
 
-net::net() {}
+net::net(std::string name)
+{
+    net::name = name;
+}
 
 net::net(const net &other)
 {
+    name = other.name;
     sourceBlockName = other.sourceBlockName;
     sourceChannel = other.sourceChannel;
+    sinkBlockNames = other.sinkBlockNames;
+}
 
-    for (auto &entry : other.connectedPinsAndTheirRouting)
-        connectedPinsAndTheirRouting.emplace(entry.first, std::stack<std::pair<channelID, unsigned char>>{});
+std::string net::getName() const
+{
+    return name;
 }
 
 channelID net::getSourceChannel() const
@@ -24,14 +31,9 @@ std::string net::getSourceBlockName() const
     return sourceBlockName;
 }
 
-unsigned short net::getIndex() const
+unsigned short net::getSinkBlockCount() const
 {
-    return index;
-}
-
-unsigned short net::getPinCount() const
-{
-    return connectedPinsAndTheirRouting.size();
+    return sinkBlockNames.size();
 }
 
 bool net::usedChannel(const channelID &channel) const
@@ -39,9 +41,14 @@ bool net::usedChannel(const channelID &channel) const
     return usedTracks.contains(channel);
 }
 
-std::map<std::string, std::stack<std::pair<channelID, unsigned char>>> net::getConnectedPinBlockNamesAndTheirRouting() const
+std::set<std::string> net::getSinkBlockNames() const
 {
-    return connectedPinsAndTheirRouting;
+    return sinkBlockNames;
+}
+
+std::vector<std::pair<std::string, std::vector<std::pair<channelID, unsigned char>>>> net::getConnectionsByRoutingOrder() const
+{
+    return connectionsByRoutingOrder;
 }
 
 unsigned char net::chooseUsedTrack(const channelID &channel, const unsigned char &optimalTrack) const
@@ -60,18 +67,14 @@ unsigned char net::chooseUsedTrack(const channelID &channel, const unsigned char
 
 bool net::allPinsConnected() const
 {
-    for (auto &entry : connectedPinsAndTheirRouting)
-        if (entry.second.empty())
-            return false;
-
-    return true;
+    return sinkBlockNames.size() == connectionsByRoutingOrder.size();
 }
 
 std::string net::listConnectedBlocks() const
 {
     std::string list;
-    for (auto &entry : connectedPinsAndTheirRouting)
-        list.append(entry.first).append(", ");
+    for (std::string sinkBlockName : sinkBlockNames)
+        list.append(sinkBlockName).append(", ");
     return list.substr(0, list.size() - 2);
 }
 
@@ -85,14 +88,10 @@ void net::setSourceBlockName(std::string sourceBlockName)
     net::sourceBlockName = sourceBlockName;
 }
 
-void net::setIndex(unsigned short index)
+void net::addSinkBlock(std::string sinkBlockName)
 {
-    net::index = index;
-}
-
-void net::setConnectedPin(std::string name)
-{
-    net::connectedPinsAndTheirRouting.emplace(name, std::stack<std::pair<channelID, unsigned char>>{});
+    assert(!sinkBlockNames.contains(sinkBlockName));
+    sinkBlockNames.emplace(sinkBlockName);
 }
 
 void net::setUsedTrack(const channelID &channel, const unsigned char &track)
@@ -100,8 +99,8 @@ void net::setUsedTrack(const channelID &channel, const unsigned char &track)
     usedTracks.emplace(channel, track);
 }
 
-void net::setConnection(std::string reachedBlock, std::stack<std::pair<channelID, unsigned char>> connectionToSink)
+void net::setConnection(std::string sinkBlockName, std::vector<std::pair<channelID, unsigned char>> connectionToSink)
 {
-    assert(connectedPinsAndTheirRouting.contains(reachedBlock));
-    connectedPinsAndTheirRouting.find(reachedBlock)->second = connectionToSink;
+    assert(sinkBlockNames.contains(sinkBlockName));
+    connectionsByRoutingOrder.emplace_back(sinkBlockName, connectionToSink);
 }

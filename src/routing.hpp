@@ -8,7 +8,6 @@
 #include "net.hpp"
 #include "block.hpp"
 
-bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth, std::map<std::string, std::shared_ptr<net>> &netsByNameOfTheSourceBlock,
-               std::map<std::string, std::shared_ptr<block>> &blocks);
+bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth, std::vector<std::shared_ptr<net>> const &sortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks);
 
 #endif

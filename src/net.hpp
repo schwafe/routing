@@ -6,37 +6,39 @@
 #include <string>
 #include <stack>
 #include <limits>
+#include <vector>
 #include "channel.hpp"
 
 class net
 {
+    std::string name;
     channelID sourceChannel{};
     std::string sourceBlockName{};
-    unsigned short index = std::numeric_limits<unsigned short>::max();
+    std::set<std::string> sinkBlockNames{};
     std::multimap<channelID, unsigned char> usedTracks{};
-    std::map<std::string, std::stack<std::pair<channelID, unsigned char>>> connectedPinsAndTheirRouting{};
+    std::vector<std::pair<std::string, std::vector<std::pair<channelID, unsigned char>>>> connectionsByRoutingOrder{};
 
 public:
-    net();
+    net(std::string name);
     net(const net &other);
 
-    unsigned short getPinCount() const;
+    std::string getName() const;
+    unsigned short getSinkBlockCount() const;
     channelID getSourceChannel() const;
     std::string getSourceBlockName() const;
-    unsigned short getIndex() const;
-    std::map<std::string, std::stack<std::pair<channelID, unsigned char>>> getConnectedPinBlockNamesAndTheirRouting() const;
-    bool usedChannel(const channelID &channel) const;
+    std::set<std::string> getSinkBlockNames() const;
+    std::vector<std::pair<std::string, std::vector<std::pair<channelID, unsigned char>>>> getConnectionsByRoutingOrder() const;
 
-    unsigned char chooseUsedTrack(const channelID &channel, const unsigned char &optimalTrack) const;
+    bool usedChannel(const channelID &channel) const;
     bool allPinsConnected() const;
     std::string listConnectedBlocks() const;
+    unsigned char chooseUsedTrack(const channelID &channel, const unsigned char &optimalTrack) const;
 
     void setSourceChannel(channelID sourceChannel);
     void setSourceBlockName(std::string sourceBlockName);
-    void setIndex(unsigned short index);
-    void setConnectedPin(std::string blockName);
+    void addSinkBlock(std::string sinkBlockName);
     void setUsedTrack(const channelID &channel, const unsigned char &track);
-    void setConnection(std::string reachedBlock, std::stack<std::pair<channelID, unsigned char>> connectionToSink);
+    void setConnection(std::string sinkBlockName, std::vector<std::pair<channelID, unsigned char>> connectionToSink);
 };
 
 #endif

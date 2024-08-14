@@ -48,6 +48,11 @@ channelID::channelID(unsigned char x, unsigned char y, char type)
 
 channelID::channelID() {}
 
+bool channelID::isInitialized() const
+{
+    return type != 0;
+}
+
 unsigned char channelID::getXCoordinate() const
 {
     return x;
@@ -177,7 +182,7 @@ channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, s
         }
         std::cout << std::endl;
 
-        assert(chosenChannel.getType() != 0);
+        assert(chosenChannel.isInitialized());
         return chosenChannel;
     }
 }
