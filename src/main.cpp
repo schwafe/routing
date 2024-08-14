@@ -50,7 +50,6 @@ void readNet(std::string &fileName, std::map<std::string, std::shared_ptr<net>> 
             std::regex_match(line, matches, constants::clbPinPattern);
             for (unsigned char index = 1; index <= 4; index++)
             {
-                // TODO make sure this matches correctly
                 if (matches[index] != "open")
                 {
                     if (netsByNameOfTheNet.contains(matches[index]))
@@ -283,12 +282,7 @@ void writeRouting(const std::string &fileName, unsigned char &arraySize, auto &n
         else
             routingFile << "Pad: " << +subblockNumber << "  \n";
 
-        routingFile << "  OPIN (" << +x << "," << +y << ")  ";
-        if (p_sourceBlock->getType() == constants::blockTypeCLB)
-            routingFile << "Pin: " << +constants::outputPinNumber << "  \n";
-        else
-            routingFile << "Pad: " << +subblockNumber << "  \n";
-
+        // TODO create order (order of how they were routed)
         for (auto &connectionEntry : p_net->getConnectedPinBlockNamesAndTheirRouting())
         {
             assert(blocks.contains(connectionEntry.first));
@@ -300,6 +294,15 @@ void writeRouting(const std::string &fileName, unsigned char &arraySize, auto &n
             do
             {
                 channel = connection.top().first;
+
+                if (channel == p_net->getSourceChannel())
+                {
+                    routingFile << "  OPIN (" << +x << "," << +y << ")  ";
+                    if (p_sourceBlock->getType() == constants::blockTypeCLB)
+                        routingFile << "Pin: " << +constants::outputPinNumber << "  \n";
+                    else
+                        routingFile << "Pad: " << +subblockNumber << "  \n";
+                }
 
                 routingFile << " CHAN" << channel.getType() << " (" << +channel.getXCoordinate() << ',' << +channel.getYCoordinate() << ")  Track: " << +connection.top().second << "  \n";
                 connection.pop();

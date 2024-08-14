@@ -50,69 +50,6 @@ void registerIndex(std::map<channelID, unsigned char> &channelToIndex, std::map<
     indexToChannels.find(index)->second.emplace(channel);
 }
 
-/* bool addChannelIfValid(channelID channel, auto &channelToIndex, auto &indexToChannels, unsigned char index, unsigned char const &channelwidth, auto &channelInformation, auto &newWave,
-                       auto &relevantChannels, unsigned short &numberOfPinsReached, channelID &sink, std::set<std::string> &reachedBlocks, auto &blocks)
-{
-    assert(channelInformation.contains(channel));
-    if (!channelToIndex.contains(channel) && !channelInformation.find(channel)->second.isFull(channelwidth))
-    {
-        registerIndex(channelToIndex, indexToChannels, channel, index);
-
-        if (relevantChannels.contains(channel))
-        {
-            assert(relevantChannels.find(channel)->second.size() != 0);
-            for (std::string blockName : relevantChannels.find(channel)->second)
-            {
-                numberOfPinsReached++;
-                reachedBlocks.insert(blockName);
-                assert(blocks.contains(blockName));
-                std::shared_ptr<block> p_block = blocks.find(blockName)->second;
-                p_block->setChannelTaken(channel);
-                removeOtherChannelEntries(relevantChannels, blockName, p_block->getOpenChannels());
-            }
-            relevantChannels.erase(channel);
-            sink = channel;
-
-            return true;
-        }
-        else
-        {
-            newWave.insert(channel);
-        }
-    }
-    return false;
-}
-
-unsigned char wavePropagation(unsigned char const &arraySize, auto &channelToIndex, auto &indexToChannels, unsigned char const &channelwidth, auto &channelInformation,
-                              auto &relevantChannels, unsigned short &numberOfPinsReached, channelID &sink, std::set<std::string> &reachedBlocks, auto &blocks)
-{
-    unsigned char currentIndex = 1;
-
-    assert(indexToChannels.contains(constants::indexZero));
-    std::set<channelID> currentWave(indexToChannels.find(constants::indexZero)->second);
-    std::set<channelID> newWave;
-    do
-    {
-        for (channelID channel : currentWave)
-        {
-            for (channelID neighbour : channel.getNeighbours(arraySize))
-            {
-                bool pinFound = addChannelIfValid(neighbour, channelToIndex, indexToChannels, currentIndex, channelwidth, channelInformation, newWave, relevantChannels, numberOfPinsReached, sink, reachedBlocks, blocks);
-                if (pinFound)
-                    return currentIndex;
-            }
-        }
-        currentIndex++;
-
-        currentWave.clear();
-        currentWave = newWave;
-        newWave.clear();
-    } while (!currentWave.empty());
-
-    return -1;
-}
- */
-
 channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, const unsigned char &arraySize, unsigned char &indexOfSink,
                    const unsigned char &channelwidth, auto &channelInformation, auto &relevantChannels, unsigned short &numberOfPinsReached, std::set<std::string> &reachedBlocks, const auto &blocks)
 {
@@ -177,20 +114,33 @@ channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<
     return channelID{};
 }
 
-void useChannel(const channelID &channel, auto &channelInformation, std::stack<std::pair<channelID, unsigned char>> &connectionToSink, std::set<channelID> &usedChannels)
+void useChannel(const channelID &channel, std::shared_ptr<net> p_net, auto &channelInformation, std::stack<std::pair<channelID, unsigned char>> &connectionToSink,
+                std::set<channelID> &usedChannels, unsigned char &currentTrack)
 {
     assert(channelInformation.contains(channel));
-    unsigned char track = channelInformation.find(channel)->second.useChannel();
-    connectionToSink.emplace(channel, track);
+
+    if (p_net->usedChannel(channel))
+        currentTrack = p_net->chooseUsedTrack(channel, currentTrack);
+    else
+    {
+        channelInformation.find(channel)->second.useChannel(currentTrack);
+        p_net->setUsedTrack(channel, currentTrack);
+    }
+
+    connectionToSink.emplace(channel, currentTrack);
     usedChannels.insert(channel);
 }
 
-std::stack<std::pair<channelID, unsigned char>> retrace(unsigned char const &arraySize, auto &channelToIndex, auto &indexToChannels, channelID sink, unsigned char &indexOfSink, auto &channelInformation)
+std::stack<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize, auto &channelToIndex, auto &indexToChannels, std::shared_ptr<net> p_net, const channelID &sink,
+                                                        unsigned char &indexOfSink, auto &channelInformation)
 {
     assert(sink.getType() != 0);
+
     std::set<channelID> usedChannels{};
     std::stack<std::pair<channelID, unsigned char>> connectionToSink{};
-    useChannel(sink, channelInformation, connectionToSink, usedChannels);
+    unsigned char currentTrack = std::numeric_limits<unsigned char>::max();
+
+    useChannel(sink, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
     std::cout << "-------------\nsink: " << channelIDToString(sink) << std::endl;
 
@@ -198,8 +148,7 @@ std::stack<std::pair<channelID, unsigned char>> retrace(unsigned char const &arr
 
     channelID currentChannel = sink;
     unsigned char expectedIndex = indexOfSink;
-    // TODO most likely using channels at index 0 more than one time. Connection to sink (and the retrace step) need to stop before a channel is used twice. For the first connection, this is no problem, but all the following ones need to stop at index 1.
-    // not quite correct? connectionToSink does need the index 0 element, but if the track is the same, the channel does not need to be used again.
+
     do
     {
         expectedIndex--;
@@ -209,7 +158,7 @@ std::stack<std::pair<channelID, unsigned char>> retrace(unsigned char const &arr
         channelID chosenChannel = currentChannel.chooseNeighbour(indexToChannels.find(expectedIndex)->second, channelInformation);
         std::cout << "chosenChannel:" << channelIDToString(chosenChannel) << std::endl;
 
-        useChannel(chosenChannel, channelInformation, connectionToSink, usedChannels);
+        useChannel(chosenChannel, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
         currentChannel = chosenChannel;
     } while (expectedIndex > 0);
@@ -259,8 +208,9 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
         {
             std::set<channelID> usedChannels{};
             std::stack<std::pair<channelID, unsigned char>> connectionToSink{};
+            unsigned char currentTrack = std::numeric_limits<unsigned char>::max();
 
-            useChannel(sourceChannel, channelInformation, connectionToSink, usedChannels);
+            useChannel(sourceChannel, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
             for (std::string associatedBlockName : relevantChannels.find(sourceChannel)->second)
             {
@@ -283,7 +233,7 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
             if (sink.getType() == 0)
                 return false;
 
-            std::stack<std::pair<channelID, unsigned char>> connectionToSink = retrace(arraySize, channelToIndex, indexToChannels, sink, indexOfSink, channelInformation);
+            std::stack<std::pair<channelID, unsigned char>> connectionToSink = retrace(arraySize, channelToIndex, indexToChannels, p_net, sink, indexOfSink, channelInformation);
 
             assert(reachedBlocks.size() != 0);
             for (std::string blockName : reachedBlocks)
@@ -294,7 +244,7 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
             }
         }
         std::cout << "------------------------------ net (sourceBlockName '" << sourceBlockName << "' - size: '" << p_net->getPinCount() << "') routed!" << std::endl;
-        printConnections(p_net);
+        // printConnections(p_net);
         assert(p_net->allPinsConnected());
         netIndex++;
     }

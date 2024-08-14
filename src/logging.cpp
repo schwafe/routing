@@ -26,7 +26,7 @@ void printConnections(std::shared_ptr<net> p_net)
         std::cout << "\tsinkBlockName: '" << entry.first << "'" << std::endl;
         do
         {
-            std::cout << "\t\t" << channelIDToString(connection.top().first) << " - " << connection.top().second << std::endl;
+            std::cout << "\t\t" << channelIDToString(connection.top().first) << " - " << +connection.top().second << std::endl;
             connection.pop();
         } while (!connection.empty());
     }

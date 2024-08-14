@@ -8,12 +8,13 @@
 class channelInfo
 {
     unsigned char usedTracks{};
-    std::bitset<2> tracks{};
+    std::bitset<2> openTracks;
 
 public:
-    bool isFull(unsigned char channelwidth);
-    unsigned char getUsedTracks();
-    unsigned char useChannel();
+    bool isFull(unsigned char channelwidth) const;
+    unsigned char getUsedTracks() const;
+
+    unsigned char useChannel(const unsigned char &optimalTrack);
 };
 
 class channelID
@@ -26,13 +27,12 @@ public:
     auto operator<=>(channelID const &rhs) const = default;
     channelID(unsigned char x, unsigned char y, char type);
     channelID();
-    unsigned char getXCoordinate();
-    unsigned char getYCoordinate();
-    char getType();
-    std::set<channelID> getNeighbours(unsigned char arraySize);
-    //TODO remove
-    channelID chooseNeighbour_old(unsigned char arraySize, std::map<channelID, unsigned char> &indices, unsigned char expectedIndex, std::map<channelID, channelInfo> &channelInformation);
-    channelID chooseNeighbour(const std::set<channelID> &validChannels, std::map<channelID, channelInfo> &channelInformation);
+
+    unsigned char getXCoordinate() const;
+    unsigned char getYCoordinate() const;
+    char getType() const;
+    std::set<channelID> getNeighbours(unsigned char arraySize) const;
+    channelID chooseNeighbour(const std::set<channelID> &validChannels, std::map<channelID, channelInfo> &channelInformation) const;
 };
 
 std::map<channelID, channelInfo> generateChannelInformation(unsigned char arraySize);

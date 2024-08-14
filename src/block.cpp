@@ -52,38 +52,32 @@ void block::initialise(unsigned char x, unsigned char y, unsigned char subblockN
     block::openChannels = channels;
 }
 
-char block::getType()
+char block::getType() const
 {
     return type;
 }
 
-unsigned char block::getX()
+unsigned char block::getX() const
 {
     return x;
 }
 
-unsigned char block::getY()
+unsigned char block::getY() const
 {
     return y;
 }
 
-unsigned char block::getSubblockNumber()
+unsigned char block::getSubblockNumber() const
 {
     return subblockNumber;
 }
 
-std::set<channelID> block::getOpenChannels()
+std::set<channelID> block::getOpenChannels() const
 {
     return openChannels;
 }
 
-void block::setChannelTaken(channelID channel)
-{
-    assert(openChannels.contains(channel));
-    openChannels.erase(channel);
-}
-
-unsigned char block::determinePinNumber(channelID channel)
+unsigned char block::determinePinNumber(channelID channel) const
 {
     unsigned char number = -1;
     if (channel.getYCoordinate() != y)
@@ -109,4 +103,10 @@ unsigned char block::determinePinNumber(channelID channel)
         }
     }
     return number;
+}
+
+void block::setChannelTaken(channelID channel)
+{
+    assert(openChannels.contains(channel));
+    openChannels.erase(channel);
 }
