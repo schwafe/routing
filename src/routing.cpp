@@ -123,7 +123,7 @@ void useChannel(const channelID &channel, std::shared_ptr<net> p_net, auto &chan
         currentTrack = p_net->chooseUsedTrack(channel, currentTrack);
     else
     {
-        channelInformation.find(channel)->second.useChannel(currentTrack);
+        currentTrack = channelInformation.find(channel)->second.useChannel(currentTrack);
         p_net->setUsedTrack(channel, currentTrack);
     }
 

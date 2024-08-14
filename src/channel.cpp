@@ -8,18 +8,18 @@
 
 bool channelInfo::isFull(unsigned char channelwidth) const
 {
-    return channelwidth == channelInfo::usedTracks;
+    return channelwidth == channelInfo::tracksUsed;
 }
 
 unsigned char channelInfo::getUsedTracks() const
 {
-    return usedTracks;
+    return tracksUsed;
 }
 
-unsigned char channelInfo::useChannel(const unsigned char &optimalTrack)
+unsigned char channelInfo::useChannel(unsigned char optimalTrack)
 {
     unsigned char track = std::numeric_limits<unsigned char>::max();
-    if (optimalTrack != std::numeric_limits<unsigned char>::max() && openTracks[optimalTrack])
+    if (optimalTrack != std::numeric_limits<unsigned char>::max() && occupiedTracks[optimalTrack] == false)
     {
         track = optimalTrack;
     }
@@ -28,12 +28,14 @@ unsigned char channelInfo::useChannel(const unsigned char &optimalTrack)
         unsigned char index = 0;
         do
         {
-            if (openTracks[index])
+            if (occupiedTracks[index] == false)
                 track = index;
-        } while (track == std::numeric_limits<unsigned char>::max() && ++index < openTracks.size());
+
+        } while (track == std::numeric_limits<unsigned char>::max() && ++index < occupiedTracks.size());
     }
-    openTracks[track] = false;
-    usedTracks++;
+    assert(track != std::numeric_limits<unsigned char>::max());
+    occupiedTracks[track] = true;
+    tracksUsed++;
     return track;
 }
 
@@ -109,7 +111,7 @@ std::set<channelID> channelID::getNeighbours(unsigned char arraySize) const
     return neighbours;
 }
 
-channelID channelID::chooseNeighbour(const std::set<channelID> &validChannels, std::map<channelID, channelInfo> &channelInformation) const
+channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, std::map<channelID, channelInfo> const &channelInformation) const
 {
     channelID chosenNeighbour{};
     channelID channelA, channelB;

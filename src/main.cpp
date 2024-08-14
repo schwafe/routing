@@ -357,7 +357,7 @@ int main(int argc, char *argv[])
     std::cout << "Reading place file!" << std::endl;
     readPlace(fileName, arraySize, blocks, blocksConnectedToClock, netsByNameOfTheSourceBlock);
 
-    unsigned char channelwidth = constants::startingValuechannelwidth;
+    unsigned char channelwidth = constants::startingValueChannelWidth;
 
     assert(netsByNameOfTheNet.size() == netsByNameOfTheSourceBlock.size());
 
@@ -393,7 +393,11 @@ int main(int argc, char *argv[])
         else
         {
             channelwidth++;
-            std::cout << "Failure! Trying again with a channelwidth of " << +channelwidth << " tracks!" << std::endl;
+            std::cout << "Failure!";
+            if (channelwidth < successfulWidth)
+                std::cout << " Trying again with a channelwidth of " << +channelwidth << " tracks!" << std::endl;
+            else
+                std::cout << " Using the result from the successful run before with a channelwidth of " << +channelwidth << " tracks!" << std::endl;
         }
 
         assert(channelwidth <= 16);

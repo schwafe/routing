@@ -4,17 +4,18 @@
 #include <map>
 #include <set>
 #include <bitset>
+#include "constants.hpp"
 
 class channelInfo
 {
-    unsigned char usedTracks{};
-    std::bitset<2> openTracks;
+    unsigned char tracksUsed{};
+    std::bitset<constants::maximumChannelWidth> occupiedTracks{};
 
 public:
     bool isFull(unsigned char channelwidth) const;
     unsigned char getUsedTracks() const;
 
-    unsigned char useChannel(const unsigned char &optimalTrack);
+    unsigned char useChannel(unsigned char optimalTrack);
 };
 
 class channelID
@@ -32,7 +33,7 @@ public:
     unsigned char getYCoordinate() const;
     char getType() const;
     std::set<channelID> getNeighbours(unsigned char arraySize) const;
-    channelID chooseNeighbour(const std::set<channelID> &validChannels, std::map<channelID, channelInfo> &channelInformation) const;
+    channelID chooseNeighbour(std::set<channelID> const &validChannels, std::map<channelID, channelInfo> const &channelInformation) const;
 };
 
 std::map<channelID, channelInfo> generateChannelInformation(unsigned char arraySize);
