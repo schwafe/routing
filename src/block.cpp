@@ -22,7 +22,7 @@ void block::initialise(unsigned char x, unsigned char y, unsigned char subblockN
     block::y = y;
     block::subblockNumber = subblockNumber;
 
-    std::set<channelID> channels;
+    std::set<channelID> channels{};
     if (type == constants::blockTypeCLB)
     {
         channels.emplace(x, y, constants::channelTypeX);

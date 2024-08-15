@@ -11,7 +11,7 @@
 
 class net
 {
-    std::string name;
+    std::string name{};
     channelID sourceChannel{};
     std::string sourceBlockName{};
     std::set<std::string> sinkBlockNames{};

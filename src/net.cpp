@@ -70,14 +70,6 @@ bool net::allPinsConnected() const
     return sinkBlockNames.size() == connectionsByRoutingOrder.size();
 }
 
-std::string net::listConnectedBlocks() const
-{
-    std::string list;
-    for (std::string sinkBlockName : sinkBlockNames)
-        list.append(sinkBlockName).append(", ");
-    return list.substr(0, list.size() - 2);
-}
-
 void net::setSourceChannel(channelID sourceChannel)
 {
     net::sourceChannel = sourceChannel;

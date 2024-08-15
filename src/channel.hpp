@@ -14,6 +14,7 @@ class channelInfo
 public:
     bool isFull(unsigned char channelwidth) const;
     unsigned char getUsedTracks() const;
+    bool isTrackFree(unsigned char track) const;
 
     unsigned char useChannel(unsigned char optimalTrack);
 };
@@ -34,7 +35,7 @@ public:
     unsigned char getYCoordinate() const;
     char getType() const;
     std::set<channelID> getNeighbours(unsigned char arraySize) const;
-    channelID chooseNeighbour(std::set<channelID> const &validChannels, std::map<channelID, channelInfo> const &channelInformation) const;
+    channelID chooseNeighbour(std::set<channelID> const &validChannels, unsigned char currentTrack, std::map<channelID, channelInfo> const &channelInformation) const;
 };
 
 std::map<channelID, channelInfo> generateChannelInformation(unsigned char arraySize);

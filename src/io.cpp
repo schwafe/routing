@@ -200,9 +200,10 @@ bool readNet(std::string fileName, std::map<std::string, std::shared_ptr<net>> &
 bool readPlace(std::string fileName, unsigned char &arraySize, std::map<std::string, std::shared_ptr<net>> &netsByNameOfTheSourceBlock, std::map<std::string, std::shared_ptr<block>> &blocks,
                std::map<std::string, std::pair<unsigned short, std::shared_ptr<block>>> &blocksConnectedToClock, std::string &errorMessage)
 {
-    std::string line;
     std::ifstream placeFile;
     placeFile.open(constants::placePrefix + fileName + constants::placementSuffix);
+
+    std::string line;
 
     // netlist and architecture file line
     std::getline(placeFile, line);
@@ -222,7 +223,6 @@ bool readPlace(std::string fileName, unsigned char &arraySize, std::map<std::str
     // empty line
     std::getline(placeFile, line);
 
-    bool matched;
     int i = 0;
     do
     {

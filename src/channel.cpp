@@ -16,10 +16,15 @@ unsigned char channelInfo::getUsedTracks() const
     return tracksUsed;
 }
 
+bool channelInfo::isTrackFree(unsigned char track) const
+{
+    return !occupiedTracks[track];
+}
+
 unsigned char channelInfo::useChannel(unsigned char optimalTrack)
 {
     unsigned char track = std::numeric_limits<unsigned char>::max();
-    if (optimalTrack != std::numeric_limits<unsigned char>::max() && occupiedTracks[optimalTrack] == false)
+    if (optimalTrack != std::numeric_limits<unsigned char>::max() && !occupiedTracks[optimalTrack])
     {
         track = optimalTrack;
     }
@@ -28,7 +33,7 @@ unsigned char channelInfo::useChannel(unsigned char optimalTrack)
         unsigned char index = 0;
         do
         {
-            if (occupiedTracks[index] == false)
+            if (!occupiedTracks[index])
                 track = index;
 
         } while (track == std::numeric_limits<unsigned char>::max() && ++index < occupiedTracks.size());
@@ -70,7 +75,7 @@ char channelID::getType() const
 
 std::set<channelID> channelID::getNeighbours(unsigned char arraySize) const
 {
-    std::set<channelID> neighbours;
+    std::set<channelID> neighbours{};
     if (channelID::type == constants::channelTypeX)
     {
         if (y > 0)
@@ -116,10 +121,10 @@ std::set<channelID> channelID::getNeighbours(unsigned char arraySize) const
     return neighbours;
 }
 
-channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, std::map<channelID, channelInfo> const &channelInformation) const
+channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, unsigned char currentTrack, std::map<channelID, channelInfo> const &channelInformation) const
 {
     channelID chosenNeighbour{};
-    channelID channelA, channelB;
+    channelID channelA{}, channelB{};
     if (channelID::type == constants::channelTypeX)
     {
         channelA = channelID(x - 1, y, constants::channelTypeX);
@@ -137,7 +142,14 @@ channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, s
         return channelA;
     else if (validChannels.contains(channelB) && validChannels.contains(channelA))
     {
-        if (channelInformation.find(channelA)->second.getUsedTracks() <= channelInformation.find(channelB)->second.getUsedTracks())
+        channelInfo infA = channelInformation.find(channelA)->second;
+        channelInfo infB = channelInformation.find(channelB)->second;
+
+        if (!infA.isTrackFree(currentTrack) && infB.isTrackFree(currentTrack))
+            return channelB;
+        else if (!infB.isTrackFree(currentTrack) && infA.isTrackFree(currentTrack))
+            return channelA;
+        else if (infA.getUsedTracks() <= infB.getUsedTracks())
             return channelA;
         else
             return channelB;
@@ -162,6 +174,17 @@ channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, s
             neighbours.emplace(x + 1, y, constants::channelTypeX);
         }
 
+        std::set<channelID> validChannelsWithFreeCurrentTrack{};
+
+        for (channelID neighbour : neighbours)
+        {
+            if (validChannels.contains(neighbour) && channelInformation.find(neighbour)->second.isTrackFree(currentTrack))
+                validChannelsWithFreeCurrentTrack.insert(neighbour);
+        }
+
+        if (validChannelsWithFreeCurrentTrack.size() >= 1)
+            neighbours = validChannelsWithFreeCurrentTrack;
+
         unsigned char lowestAmount = std::numeric_limits<unsigned char>::max();
         channelID chosenChannel{};
 
@@ -170,8 +193,8 @@ channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, s
         {
             if (validChannels.contains(neighbour))
             {
-                std::cout << channelIDToString(neighbour) << ' ';
                 assert(channelInformation.contains(neighbour));
+                std::cout << channelIDToString(neighbour) << ' ';
                 unsigned char used = channelInformation.find(neighbour)->second.getUsedTracks();
                 if (used < lowestAmount)
                 {
@@ -189,7 +212,7 @@ channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, s
 
 std::map<channelID, channelInfo> generateChannelInformation(unsigned char arraySize)
 {
-    std::map<channelID, channelInfo> channelInformation;
+    std::map<channelID, channelInfo> channelInformation{};
     for (int x = 1; x <= arraySize; x++)
     {
         for (int y = 0; y <= arraySize; y++)

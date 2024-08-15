@@ -8,6 +8,7 @@
 #include "channel.hpp"
 #include "routing.hpp"
 #include "block.hpp"
+#include "logging.hpp"
 
 void abortIfTrue(bool condition, unsigned char errorCode, std::string errorMessage)
 {
@@ -20,6 +21,8 @@ void abortIfTrue(bool condition, unsigned char errorCode, std::string errorMessa
 
 std::vector<std::shared_ptr<net>> sortNets(std::map<std::string, std::shared_ptr<net>> const &netsByNameOfTheSourceBlock)
 {
+    //TODO nets connected to the clock go first
+
     std::multimap<unsigned char, std::shared_ptr<net>> netsGroupedBySinkBlockCount{};
     unsigned char highestSinkBlockCount = 0;
 
@@ -48,26 +51,29 @@ std::vector<std::shared_ptr<net>> sortNets(std::map<std::string, std::shared_ptr
     return sortedNets;
 }
 
-void deepCopy(std::vector<std::shared_ptr<net>> sortedNets, std::vector<std::shared_ptr<net>> &copyOfSortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks, auto &copyOfBlocks)
+void deepCopy(std::vector<std::shared_ptr<net>> sortedNets, std::vector<std::shared_ptr<net>> &copyOfSortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks, std::map<std::string, std::shared_ptr<block>> &copyOfBlocks)
 {
-    // TODO test
+    copyOfSortedNets = std::vector<std::shared_ptr<net>>{};
+    copyOfBlocks = std::map<std::string, std::shared_ptr<block>>{};
 
     for (std::shared_ptr<net> p_net : sortedNets)
-    {
-        std::shared_ptr<net> copy = std::make_shared<net>(*p_net);
-        copyOfSortedNets.push_back(copy);
-    }
+        copyOfSortedNets.push_back(std::make_shared<net>(*p_net));
 
     for (auto &entry : blocks)
-    {
-        block copy = *entry.second;
-        copyOfBlocks.emplace(entry.first, std::make_shared<block>(copy));
-    }
+        copyOfBlocks.insert(std::make_pair(entry.first, std::make_shared<block>(*entry.second)));
+
+    /*     sortedNets[0]->setUsedTrack(channelID{0,2,constants::channelTypeY}, 2);
+        sortedNets[0]->setSourceBlockName("ef");
+
+        blocks.find("c1")->second->setChannelTaken(channelID{2,1,constants::channelTypeY});
+        blocks.find("c1")->second->initialise(3,2,0);
+        std::cout<<"fhi"; */
 }
 
 int main(int argc, char *argv[])
 {
-    abortIfTrue(argc != 2, constants::wrongArguments, "Argument count unexpected! Please enter just one argument: the filename for the .net and .place files to be used.");
+
+    abortIfTrue(argc != 2, constants::wrongArguments, "Argument count unexpected! Arguments received: '" + argsToString(argc, argv) + " Please enter just one argument: the filename for the .net and .place files to be used.");
 
     std::cout << "Program start!\n";
 
@@ -102,11 +108,10 @@ int main(int argc, char *argv[])
     << "name of the clock: " << clockName << '\n'; */
 
     unsigned char successfulWidth = std::numeric_limits<unsigned char>::max();
+    unsigned char failedWidth = 0;
     std::vector<std::shared_ptr<net>> tempSortedNets{}, finalSortedNets{};
     std::map<std::string, std::shared_ptr<block>> tempBlocks{}, finalBlocks{};
 
-    // TODO trying again with a broader channelwidth fails early - 25k lines for 12 tracks, 250 for 13, 230 for 14, 27 for 15 und 2 for 16
-    // TODO for ex5p, before writing the routing file (during a retry), "Routing net with sourceBlockName '[101]' and sink-blocks: '[3856]'" was printed 111 times!
     do
     {
         std::cout << "\n----------------\nRouting nets with a channelwidth of " << +channelwidth << " tracks!\n";
@@ -118,24 +123,26 @@ int main(int argc, char *argv[])
             successfulWidth = channelwidth;
             finalSortedNets = tempSortedNets;
             finalBlocks = tempBlocks;
+            std::cout << "Routing succeeded with a channelwidth of " << +successfulWidth << " tracks!\n";
             channelwidth = channelwidth / 2;
+            if (channelwidth <= failedWidth)
+                channelwidth = failedWidth + 1;
             assert(channelwidth > 0);
-            // TODO remove break tomorrow
-            break;
-            std::cout << "Success! Trying again with a channelwidth of " << +channelwidth << " tracks!\n";
         }
         else
         {
-            channelwidth++;
-            std::cout << "Failure!";
-            if (channelwidth < successfulWidth)
-                std::cout << " Trying again with a channelwidth of " << +channelwidth << " tracks!\n";
+            assert(channelwidth > failedWidth);
+            failedWidth = channelwidth;
+            std::cout << "Routing failed with a channelwidth of " << +failedWidth << " tracks!\n";
+            if (successfulWidth == channelwidth + 2)
+                channelwidth += 1;
             else
-                std::cout << " Using the result from the successful run before with a channelwidth of " << +channelwidth << " tracks!\n";
+                channelwidth += 2;
         }
 
-        assert(channelwidth <= 16);
-    } while (success || blocks.empty() || channelwidth < successfulWidth);
+        assert(channelwidth <= constants::maximumChannelWidth + 1);
+    } while (channelwidth < successfulWidth);
+    std::cout << "Using the result from the successful run with a channelwidth of " << +successfulWidth << " tracks!\n";
 
     std::cout << "Writing routing file!\n";
     writeRouting(fileName, arraySize, finalSortedNets, finalBlocks);
