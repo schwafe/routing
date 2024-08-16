@@ -1,5 +1,7 @@
-// #define NDEBUG TODO enable for last version
+// TODO enable for last version
+#define NDEBUG
 
+#include <chrono>
 #include <iostream>
 #include <regex>
 #include <cassert>
@@ -90,6 +92,8 @@ void deepCopy(std::vector<std::shared_ptr<net>> sortedNets, std::vector<std::sha
 int main(int argc, char *argv[])
 {
 
+    auto startTime = std::chrono::steady_clock::now();
+
     abortIfTrue(argc != 2, constants::wrongArguments, "Argument count unexpected! Arguments received: '" + argsToString(argc, argv) + " Please enter just one argument: the filename for the .net and .place files to be used.");
 
     printLogMessage("Program start!");
@@ -162,6 +166,11 @@ int main(int argc, char *argv[])
 
     printLogMessage("Writing routing file!");
     writeRouting(fileName, arraySize, finalSortedNets, globalNets, finalBlocks);
+
+    auto endTime = std::chrono::steady_clock::now();
+    std::chrono::duration<double> duration{endTime - startTime};
+    
+    printLogMessage("The program ran for " + std::format("{}",duration.count()) + " seconds.");
 
     return constants::success;
 }

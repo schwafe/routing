@@ -138,7 +138,7 @@ std::vector<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize
 
     useChannel(sink, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
-    printLogMessage("-------------\nsink: " + channelIDToString(sink));
+    //printLogMessage("-------------\nsink: " + channelIDToString(sink));
 
     // printIndices(channelToIndex);
 
@@ -148,11 +148,11 @@ std::vector<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize
     do
     {
         expectedIndex--;
-        printLogMessage("expected Index: " + std::to_string(+expectedIndex));
+        //printLogMessage("expected Index: " + std::to_string(+expectedIndex));
 
         assert(indexToChannels.contains(expectedIndex));
         channelID chosenChannel = currentChannel.chooseNeighbour(indexToChannels.find(expectedIndex)->second, currentTrack, channelInformation);
-        printLogMessage("chosenChannel:" + channelIDToString(chosenChannel));
+        //printLogMessage("chosenChannel:" + channelIDToString(chosenChannel));
 
         useChannel(chosenChannel, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
@@ -175,7 +175,7 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
     {
         std::shared_ptr<net> p_net = sortedNets[index];
 
-        printLogMessage("Routing net with sourceBlockName '" + p_net->getSourceBlockName() + "' and " + std::to_string(p_net->getSinkBlockCount()) + " sink-blocks: '" + listConnectedBlocks(p_net) + "'");
+        //printLogMessage("Routing net with sourceBlockName '" + p_net->getSourceBlockName() + "' and " + std::to_string(p_net->getSinkBlockCount()) + " sink-blocks: '" + listConnectedBlocks(p_net) + "'");
 
         channelID sourceChannel = p_net->getSourceChannel();
         assert(channelInformation.contains(sourceChannel));
@@ -200,8 +200,8 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
 
             useChannel(sourceChannel, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
+            // can be an adjacent block or the sourceBlock itself, if the net uses its output as input
             std::set<std::string> associatedBlockNames = relevantChannels.find(sourceChannel)->second;
-            assert(associatedBlockNames.size() == 1);
 
             for (std::string associatedBlockName : associatedBlockNames)
             {
@@ -212,7 +212,7 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
                 p_block->setChannelTaken(sourceChannel);
                 removeOtherChannelEntries(relevantChannels, associatedBlockName, p_block->getOpenChannels());
 
-                printLogMessage("pin of block '" + associatedBlockName + "' at source channel!\n");
+                //printLogMessage("pin of block '" + associatedBlockName + "' at source channel!\n");
                 numberOfPinsReached++;
             }
         }
@@ -230,12 +230,12 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
             assert(reachedBlocks.size() != 0);
             for (std::string blockName : reachedBlocks)
             {
-                printLogMessage("reached block '" + blockName + "'\n");
+                //printLogMessage("reached block '" + blockName + "'\n");
                 // 1-2 blocks
                 p_net->setConnection(blockName, connectionToSink);
             }
         }
-        printLogMessage("------------------------------ net routed!\n");
+        //printLogMessage("------------------------------ net routed!\n");
 
         assert(p_net->allPinsConnected());
     }
