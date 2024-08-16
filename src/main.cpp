@@ -19,25 +19,49 @@ void abortIfTrue(bool condition, unsigned char errorCode, std::string errorMessa
     }
 }
 
-std::vector<std::shared_ptr<net>> sortNets(std::map<std::string, std::shared_ptr<net>> const &netsByNameOfTheSourceBlock)
+std::vector<std::shared_ptr<net>> sortNets(std::map<std::string, std::shared_ptr<net>> const &netsByNameOfTheNet, std::set<std::string> const &netsConnectedToClock,
+                                           std::set<std::shared_ptr<net>> const &globalNets)
 {
-    //TODO nets connected to the clock go first
+    std::multimap<unsigned short, std::shared_ptr<net>> netsGroupedBySinkBlockCount{};
+    std::multimap<unsigned short, std::shared_ptr<net>> netsConnectedToClockGroupedBySinkBlockCount{};
+    unsigned short highestSinkBlockCountClock = 0;
+    unsigned short highestSinkBlockCount = 0;
 
-    std::multimap<unsigned char, std::shared_ptr<net>> netsGroupedBySinkBlockCount{};
-    unsigned char highestSinkBlockCount = 0;
-
-    for (auto entry : netsByNameOfTheSourceBlock)
+    for (auto entry : netsByNameOfTheNet)
     {
-        std::shared_ptr<net> p_net(entry.second);
-        netsGroupedBySinkBlockCount.insert(std::make_pair(p_net->getSinkBlockCount(), p_net));
+        std::shared_ptr<net> p_net = entry.second;
+        if (!globalNets.contains(p_net))
+        {
+            if (netsConnectedToClock.contains(entry.first))
+            {
+                unsigned short sinkBlockCount = p_net->getSinkBlockCount();
+                netsConnectedToClockGroupedBySinkBlockCount.insert(std::make_pair(sinkBlockCount, p_net));
 
-        if (highestSinkBlockCount < p_net->getSinkBlockCount())
-            highestSinkBlockCount = p_net->getSinkBlockCount();
+                if (highestSinkBlockCountClock < sinkBlockCount)
+                    highestSinkBlockCountClock = sinkBlockCount;
+            }
+            else
+            {
+                netsGroupedBySinkBlockCount.insert(std::make_pair(p_net->getSinkBlockCount(), p_net));
+                if (highestSinkBlockCount < p_net->getSinkBlockCount())
+                    highestSinkBlockCount = p_net->getSinkBlockCount();
+            }
+        }
     }
 
     assert(!netsGroupedBySinkBlockCount.contains(0));
 
     std::vector<std::shared_ptr<net>> sortedNets{};
+    sortedNets.reserve(netsByNameOfTheNet.size());
+
+    while (highestSinkBlockCountClock > 0)
+    {
+        auto range = netsConnectedToClockGroupedBySinkBlockCount.equal_range(highestSinkBlockCountClock);
+        for (auto it = range.first; it != range.second; it++)
+            sortedNets.push_back(std::shared_ptr<net>(it->second));
+
+        highestSinkBlockCountClock--;
+    }
 
     while (highestSinkBlockCount > 0)
     {
@@ -61,13 +85,6 @@ void deepCopy(std::vector<std::shared_ptr<net>> sortedNets, std::vector<std::sha
 
     for (auto &entry : blocks)
         copyOfBlocks.insert(std::make_pair(entry.first, std::make_shared<block>(*entry.second)));
-
-    /*     sortedNets[0]->setUsedTrack(channelID{0,2,constants::channelTypeY}, 2);
-        sortedNets[0]->setSourceBlockName("ef");
-
-        blocks.find("c1")->second->setChannelTaken(channelID{2,1,constants::channelTypeY});
-        blocks.find("c1")->second->initialise(3,2,0);
-        std::cout<<"fhi"; */
 }
 
 int main(int argc, char *argv[])
@@ -75,37 +92,36 @@ int main(int argc, char *argv[])
 
     abortIfTrue(argc != 2, constants::wrongArguments, "Argument count unexpected! Arguments received: '" + argsToString(argc, argv) + " Please enter just one argument: the filename for the .net and .place files to be used.");
 
-    std::cout << "Program start!\n";
+    printLogMessage("Program start!");
 
     unsigned char arraySize{};
-    std::string clockName{};
     std::map<std::string, std::shared_ptr<block>> blocks{};
     std::map<std::string, std::shared_ptr<net>> netsByNameOfTheSourceBlock{};
     std::map<std::string, std::shared_ptr<net>> netsByNameOfTheNet{};
-    std::map<std::string, std::pair<unsigned short, std::shared_ptr<block>>> blocksConnectedToClock{};
+    std::set<std::string> netsConnectedToClock{};
+    std::set<std::shared_ptr<net>> globalNets{};
 
     std::string fileName = argv[1];
     std::string errorMessage{};
     bool success{};
 
-    success = readNet(fileName, netsByNameOfTheSourceBlock, netsByNameOfTheNet, blocks, errorMessage);
+    success = readNet(fileName, netsByNameOfTheSourceBlock, netsByNameOfTheNet, netsConnectedToClock, globalNets, blocks, errorMessage);
     abortIfTrue(!success, constants::invalidNetFile, errorMessage);
 
-    success = readPlace(fileName, arraySize, netsByNameOfTheSourceBlock, blocks, blocksConnectedToClock, errorMessage);
+    success = readPlace(fileName, arraySize, netsByNameOfTheSourceBlock, blocks, errorMessage);
     abortIfTrue(!success, constants::invalidPlaceFile, errorMessage);
 
     assert(netsByNameOfTheNet.size() == netsByNameOfTheSourceBlock.size());
 
-    std::vector<std::shared_ptr<net>> sortedNets = sortNets(netsByNameOfTheSourceBlock);
+    std::vector<std::shared_ptr<net>> sortedNets = sortNets(netsByNameOfTheNet, netsConnectedToClock, globalNets);
 
     unsigned char channelwidth = constants::startingValueChannelWidth;
 
-    std::cout << "The .net and .place files have been successfully read!\n"
-              << "The arraySize is " << +arraySize << ".\n"
-              << sortedNets.size() << " nets and " << blocks.size() << " blocks have been read.\n";
-    /*
-    << "blocksConnectedToClock: " << blocksConnectedToClock.size() << '\n'
-    << "name of the clock: " << clockName << '\n'; */
+    std::string logMessage = "The .net and .place files have been successfully read!\nThe arraySize is " + std::to_string(+arraySize) + ".\n" + std::to_string(sortedNets.size() + globalNets.size()) + " nets ";
+    if (globalNets.size() > 0)
+        logMessage += '(' + std::to_string(globalNets.size()) + " global nets) ";
+    logMessage += "and " + std::to_string(blocks.size()) + " blocks have been read.\n";
+    printLogMessage(logMessage);
 
     unsigned char successfulWidth = std::numeric_limits<unsigned char>::max();
     unsigned char failedWidth = 0;
@@ -114,7 +130,7 @@ int main(int argc, char *argv[])
 
     do
     {
-        std::cout << "\n----------------\nRouting nets with a channelwidth of " << +channelwidth << " tracks!\n";
+        printLogMessage("\n----------------\nRouting nets with a channelwidth of " + std::to_string(+channelwidth) + " tracks!");
         deepCopy(sortedNets, tempSortedNets, blocks, tempBlocks);
         success = routeNets(arraySize, channelwidth, tempSortedNets, tempBlocks);
 
@@ -123,7 +139,7 @@ int main(int argc, char *argv[])
             successfulWidth = channelwidth;
             finalSortedNets = tempSortedNets;
             finalBlocks = tempBlocks;
-            std::cout << "Routing succeeded with a channelwidth of " << +successfulWidth << " tracks!\n";
+            printLogMessage("Routing succeeded with a channelwidth of " + std::to_string(+successfulWidth) + " tracks!");
             channelwidth = channelwidth / 2;
             if (channelwidth <= failedWidth)
                 channelwidth = failedWidth + 1;
@@ -133,7 +149,7 @@ int main(int argc, char *argv[])
         {
             assert(channelwidth > failedWidth);
             failedWidth = channelwidth;
-            std::cout << "Routing failed with a channelwidth of " << +failedWidth << " tracks!\n";
+            printLogMessage("Routing failed with a channelwidth of " + std::to_string(+failedWidth) + " tracks!");
             if (successfulWidth == channelwidth + 2)
                 channelwidth += 1;
             else
@@ -142,10 +158,10 @@ int main(int argc, char *argv[])
 
         assert(channelwidth <= constants::maximumChannelWidth + 1);
     } while (channelwidth < successfulWidth);
-    std::cout << "Using the result from the successful run with a channelwidth of " << +successfulWidth << " tracks!\n";
+    printLogMessage("Using the result from the successful run with a channelwidth of " + std::to_string(+successfulWidth) + " tracks!");
 
-    std::cout << "Writing routing file!\n";
-    writeRouting(fileName, arraySize, finalSortedNets, finalBlocks);
+    printLogMessage("Writing routing file!");
+    writeRouting(fileName, arraySize, finalSortedNets, globalNets, finalBlocks);
 
     return constants::success;
 }

@@ -4,8 +4,9 @@
 #include <regex>
 #include <string>
 
-namespace constants {
-    //TODO change for standalone tests
+namespace constants
+{
+    // TODO change for standalone tests
     const std::string netPrefix = "../test files/net/";
     const std::string placePrefix = "../test files/vpr_placements/";
     const std::string routingPrefix = "../test files/vpr_routings/";
@@ -43,6 +44,8 @@ namespace constants {
 
     const unsigned char inputPinClass = 0;
     const unsigned char outputPinClass = 1;
+    const unsigned char clockPinClass = 2;
+    const char irrelevantPinClass = -1;
     const unsigned char lowerInputPinNumber = 0;
     const unsigned char leftInputPinNumber = 1;
     const unsigned char rightInputPinNumber = 2;

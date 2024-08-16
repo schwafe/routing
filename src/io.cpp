@@ -1,17 +1,13 @@
-#include <iostream>
 #include <fstream>
 #include <cassert>
 #include "io.hpp"
 #include "logging.hpp"
 
 bool readNet(std::string fileName, std::map<std::string, std::shared_ptr<net>> &netsByNameOfTheSourceBlock, std::map<std::string, std::shared_ptr<net>> &netsByNameOfTheNet,
-             std::map<std::string, std::shared_ptr<block>> &blocks, std::string &errorMessage)
+             std::set<std::string> &netsConnectedToClock, std::set<std::shared_ptr<net>> &globalNets, std::map<std::string, std::shared_ptr<block>> &blocks, std::string &errorMessage)
 {
     std::ifstream netFile;
     netFile.open(constants::netPrefix + fileName + constants::netSuffix);
-
-    std::map<std::string, std::string> inputBlockNameByNameOfTheNet{}, outputBlockNameByNameOfTheNet{};
-    std::set<std::string> netsConnectedToClock{}, blocksConnectedToClock{};
 
     std::string line;
 
@@ -32,10 +28,8 @@ bool readNet(std::string fileName, std::map<std::string, std::shared_ptr<net>> &
             {
                 if (matches[index] != "open")
                 {
-                    if (netsByNameOfTheNet.contains(matches[index]))
-                    {
-                        netsByNameOfTheNet.find(matches[index])->second->addSinkBlock(blockName);
-                    }
+                    if (auto it = netsByNameOfTheNet.find(matches[index]); it != netsByNameOfTheNet.end())
+                        it->second->addSinkBlock(blockName);
                     else
                     {
                         std::shared_ptr<net> p_net = std::make_shared<net>(matches[index]);
@@ -46,10 +40,8 @@ bool readNet(std::string fileName, std::map<std::string, std::shared_ptr<net>> &
             }
 
             std::shared_ptr<net> p_net;
-            if (netsByNameOfTheNet.contains(matches[5]))
-            {
-                p_net = netsByNameOfTheNet.find(matches[5])->second;
-            }
+            if (auto it = netsByNameOfTheNet.find(matches[5]); it != netsByNameOfTheNet.end())
+                p_net = it->second;
             else
             {
                 p_net = std::make_shared<net>(matches[5]);
@@ -58,12 +50,19 @@ bool readNet(std::string fileName, std::map<std::string, std::shared_ptr<net>> &
             p_net->setSourceBlockName(blockName);
             netsByNameOfTheSourceBlock.insert(std::make_pair(blockName, p_net));
 
-            /* if (matches[6] != "open") TODO index of nets connected to clock can be discovered during routingNets()
+            if (matches[6] != "open")
             {
-                int netIndex = -1;
-                blocksConnectedToClock.insert(std::make_pair(blockName, std::make_pair(netIndex, p_block)));
-                netsConnectedToClock.insert(matches[5]);
-            } */
+                netsConnectedToClock.insert(blockName);
+
+                if (auto it = netsByNameOfTheNet.find(matches[6]); it != netsByNameOfTheNet.end())
+                    it->second->addSinkBlock(blockName);
+                else
+                {
+                    std::shared_ptr<net> p_net = std::make_shared<net>(matches[6]);
+                    p_net->addSinkBlock(blockName);
+                    netsByNameOfTheNet.insert(std::make_pair(matches[6], p_net));
+                }
+            }
 
             // for a simple architecture (at most one 4-LUT + one FF per clb) subblock line does not provide additional information
             std::getline(netFile, line);
@@ -88,12 +87,8 @@ bool readNet(std::string fileName, std::map<std::string, std::shared_ptr<net>> &
             std::getline(netFile, line);
             std::regex_match(line, matches, constants::padPinPattern);
 
-            outputBlockNameByNameOfTheNet.emplace(matches[1], blockName);
-
-            if (netsByNameOfTheNet.contains(matches[1]))
-            {
-                netsByNameOfTheNet.find(matches[1])->second->addSinkBlock(blockName);
-            }
+            if (auto it = netsByNameOfTheNet.find(matches[1]); it != netsByNameOfTheNet.end())
+                it->second->addSinkBlock(blockName);
             else
             {
                 std::shared_ptr<net> p_net = std::make_shared<net>(matches[1]);
@@ -118,13 +113,9 @@ bool readNet(std::string fileName, std::map<std::string, std::shared_ptr<net>> &
             std::getline(netFile, line);
             std::regex_match(line, matches, constants::padPinPattern);
 
-            inputBlockNameByNameOfTheNet.emplace(matches[1], blockName);
-
             std::shared_ptr<net> p_net;
-            if (netsByNameOfTheNet.contains(matches[1]))
-            {
-                p_net = netsByNameOfTheNet.find(matches[1])->second;
-            }
+            if (auto it = netsByNameOfTheNet.find(matches[1]); it != netsByNameOfTheNet.end())
+                p_net = it->second;
             else
             {
                 p_net = std::make_shared<net>(matches[1]);
@@ -132,12 +123,6 @@ bool readNet(std::string fileName, std::map<std::string, std::shared_ptr<net>> &
             }
             p_net->setSourceBlockName(blockName);
             netsByNameOfTheSourceBlock.insert(std::make_pair(blockName, p_net));
-
-            /*             if (matches[6] != "open")
-                        {
-                            blocksConnectedToClock.insert(std::make_pair(blockName, std::make_pair(0, p_block)));
-                            netsConnectedToClock.insert(matches[5]);
-                        } */
 
             std::getline(netFile, line);
             if (!line.empty())
@@ -148,7 +133,16 @@ bool readNet(std::string fileName, std::map<std::string, std::shared_ptr<net>> &
         }
         else if (std::regex_match(line, matches, constants::globalPattern))
         {
-            /*             clockName = matches[1]; */
+            std::shared_ptr<net> p_net;
+            if (auto it = netsByNameOfTheNet.find(matches[1]); it != netsByNameOfTheNet.end())
+                p_net = it->second;
+            else
+            {
+                p_net = std::make_shared<net>(matches[1]);
+                netsByNameOfTheNet.insert(std::make_pair(matches[1], p_net));
+            }
+            assert(!globalNets.contains(p_net));
+            globalNets.emplace(p_net);
 
             std::getline(netFile, line);
             if (!line.empty())
@@ -177,28 +171,12 @@ bool readNet(std::string fileName, std::map<std::string, std::shared_ptr<net>> &
         }
     }
 
-    /*     for (std::string netName : netsConnectedToClock)
-        {
-            assert(outputBlockNameByNameOfTheNet.contains(netName));
-            std::string outputBlockName = outputBlockNameByNameOfTheNet.find(netName)->second;
-            assert(blocks.contains(outputBlockName));
-            std::shared_ptr<block> p_block = blocks.find(outputBlockName)->second;
-            blocksConnectedToClock.insert(std::make_pair(outputBlockName, std::make_pair(0, p_block)));
-        }
-
-        if (clockName != "")
-        {
-            assert(netsByNameOfTheNet.contains(clockName) && netsByNameOfTheSourceBlock.contains(clockName))
-            netsByNameOfTheNet.erase(clockName);
-            netsByNameOfTheSourceBlock.erase(inputBlockNameByNameOfTheNet.find(clockName)->second);
-        } */
-
     netFile.close();
     return true;
 }
 
 bool readPlace(std::string fileName, unsigned char &arraySize, std::map<std::string, std::shared_ptr<net>> &netsByNameOfTheSourceBlock, std::map<std::string, std::shared_ptr<block>> &blocks,
-               std::map<std::string, std::pair<unsigned short, std::shared_ptr<block>>> &blocksConnectedToClock, std::string &errorMessage)
+               std::string &errorMessage)
 {
     std::ifstream placeFile;
     placeFile.open(constants::placePrefix + fileName + constants::placementSuffix);
@@ -276,18 +254,48 @@ bool readPlace(std::string fileName, unsigned char &arraySize, std::map<std::str
     return true;
 }
 
-void writeRouting(std::string fileName, unsigned char arraySize, std::vector<std::shared_ptr<net>> const &sortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks)
+void writeRouting(std::string fileName, unsigned char arraySize, std::vector<std::shared_ptr<net>> const &sortedNets, std::set<std::shared_ptr<net>> const &globalNets,
+                  std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     std::ofstream routingFile;
     routingFile.open(constants::routingPrefix + fileName + constants::routingSuffix);
 
     routingFile << "Array size: " << +arraySize << " x " << +arraySize << " logic blocks.\n\nRouting:\n";
 
+    unsigned char globalIndex = 0;
+
+    for (std::shared_ptr<net> p_net : globalNets)
+    {
+        routingFile << "\nNet " << +(globalIndex++) << " (" << p_net->getName() << "): global net connecting:\n\n";
+
+        assert(blocks.contains(p_net->getSourceBlockName()));
+        std::shared_ptr<block> p_block = blocks.find(p_net->getSourceBlockName())->second;
+        routingFile << "Block " << p_net->getSourceBlockName() << " at (" << +p_block->getX() << ", " << +p_block->getY() << "), Pin class ";
+        if (p_block->getType() == constants::blockTypeCLB)
+            routingFile << +constants::clockPinClass;
+        else
+            routingFile << +constants::irrelevantPinClass;
+        routingFile << ".\n";
+
+        for (std::string sinkBlockName : p_net->getSinkBlockNames())
+        {
+            assert(blocks.contains(sinkBlockName));
+            std::shared_ptr<block> p_block = blocks.find(sinkBlockName)->second;
+            routingFile << "Block " << sinkBlockName << " at (" << +p_block->getX() << ", " << +p_block->getY() << "), Pin class ";
+            if (p_block->getType() == constants::blockTypeCLB)
+                routingFile << +constants::clockPinClass;
+            else
+                routingFile << +constants::irrelevantPinClass;
+            routingFile << ".\n";
+        }
+        routingFile << '\n';
+    }
+
     for (unsigned short index = 0; index < sortedNets.size(); index++)
     {
         std::shared_ptr<net> p_net = sortedNets[index];
 
-        routingFile << "\nNet " << index << " (" << p_net->getName() << ")\n\n";
+        routingFile << "\nNet " << (index + globalIndex) << " (" << p_net->getName() << ")\n\n";
 
         assert(blocks.contains(p_net->getSourceBlockName()));
         std::shared_ptr<block> p_sourceBlock = blocks.find(p_net->getSourceBlockName())->second;

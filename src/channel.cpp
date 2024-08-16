@@ -1,6 +1,5 @@
 #include <limits>
 #include <cassert>
-#include <iostream>
 #include <bitset>
 #include "channel.hpp"
 #include "constants.hpp"
@@ -188,13 +187,13 @@ channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, u
         unsigned char lowestAmount = std::numeric_limits<unsigned char>::max();
         channelID chosenChannel{};
 
-        std::cout << "candidates: ";
+        std::string loggingMessage = "candidates: ";
         for (channelID neighbour : neighbours)
         {
             if (validChannels.contains(neighbour))
             {
                 assert(channelInformation.contains(neighbour));
-                std::cout << channelIDToString(neighbour) << ' ';
+                loggingMessage += channelIDToString(neighbour) + ' ';
                 unsigned char used = channelInformation.find(neighbour)->second.getUsedTracks();
                 if (used < lowestAmount)
                 {
@@ -203,7 +202,7 @@ channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, u
                 }
             }
         }
-        std::cout << std::endl;
+        printLogMessage(loggingMessage);
 
         assert(chosenChannel.isInitialized());
         return chosenChannel;

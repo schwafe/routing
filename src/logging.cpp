@@ -18,6 +18,14 @@ std::string argsToString(int argc, char *argv[])
     return args.substr(0, args.size() - 2);
 }
 
+std::string listConnectedBlocks(std::shared_ptr<net> p_net)
+{
+    std::string list{};
+    for (std::string sinkBlockName : p_net->getSinkBlockNames())
+        list.append(sinkBlockName).append(", ");
+    return list.substr(0, list.size() - 2);
+}
+
 void printIndices(std::map<channelID, unsigned char> indices)
 {
     std::cout << '\n'
@@ -43,10 +51,6 @@ void printConnections(std::shared_ptr<net> p_net)
     std::cout << std::endl;
 }
 
-std::string listConnectedBlocks(std::shared_ptr<net> p_net)
-{
-    std::string list{};
-    for (std::string sinkBlockName : p_net->getSinkBlockNames())
-        list.append(sinkBlockName).append(", ");
-    return list.substr(0, list.size() - 2);
+void printLogMessage(std::string loggingMessage) {
+    std::cout << loggingMessage << std::endl;
 }

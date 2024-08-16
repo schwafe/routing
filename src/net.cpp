@@ -1,7 +1,6 @@
 #include "net.hpp"
 
 #include <cassert>
-#include <iostream>
 
 net::net(std::string name)
 {

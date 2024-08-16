@@ -1,4 +1,3 @@
-#include <iostream>
 #include <cassert>
 #include "routing.hpp"
 #include "block.hpp"
@@ -139,7 +138,7 @@ std::vector<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize
 
     useChannel(sink, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
-    std::cout << "-------------\nsink: " << channelIDToString(sink) << '\n';
+    printLogMessage("-------------\nsink: " + channelIDToString(sink));
 
     // printIndices(channelToIndex);
 
@@ -149,11 +148,11 @@ std::vector<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize
     do
     {
         expectedIndex--;
-        std::cout << "expected Index: " << +expectedIndex << '\n';
+        printLogMessage("expected Index: " + std::to_string(+expectedIndex));
 
         assert(indexToChannels.contains(expectedIndex));
         channelID chosenChannel = currentChannel.chooseNeighbour(indexToChannels.find(expectedIndex)->second, currentTrack, channelInformation);
-        std::cout << "chosenChannel:" << channelIDToString(chosenChannel) << '\n';
+        printLogMessage("chosenChannel:" + channelIDToString(chosenChannel));
 
         useChannel(chosenChannel, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
@@ -176,7 +175,7 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
     {
         std::shared_ptr<net> p_net = sortedNets[index];
 
-        std::cout << "Routing net with sourceBlockName '" << p_net->getSourceBlockName() << "' and sink-blocks: '" << listConnectedBlocks(p_net) << "'\n";
+        printLogMessage("Routing net with sourceBlockName '" + p_net->getSourceBlockName() + "' and " + std::to_string(p_net->getSinkBlockCount()) + " sink-blocks: '" + listConnectedBlocks(p_net) + "'");
 
         channelID sourceChannel = p_net->getSourceChannel();
         assert(channelInformation.contains(sourceChannel));
@@ -190,9 +189,6 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
         // can contain multiple entries for a channel - only the lowest is of relevance
         std::map<unsigned char, std::set<channelID>> indexToChannels{};
         unsigned short numberOfPinsReached{};
-
-        /*         if (blocksConnectedToClock.contains(sourceBlockName))
-                    blocksConnectedToClock.find(sourceBlockName)->second.first = netIndex; */
 
         registerIndex(channelToIndex, indexToChannels, sourceChannel, constants::indexZero);
 
@@ -216,7 +212,7 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
                 p_block->setChannelTaken(sourceChannel);
                 removeOtherChannelEntries(relevantChannels, associatedBlockName, p_block->getOpenChannels());
 
-                std::cout << "pin of block '" << associatedBlockName << "' at source channel!\n";
+                printLogMessage("pin of block '" + associatedBlockName + "' at source channel!\n");
                 numberOfPinsReached++;
             }
         }
@@ -234,12 +230,12 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
             assert(reachedBlocks.size() != 0);
             for (std::string blockName : reachedBlocks)
             {
-                std::cout << "reached block '" << blockName << "'\n";
+                printLogMessage("reached block '" + blockName + "'\n");
                 // 1-2 blocks
                 p_net->setConnection(blockName, connectionToSink);
             }
         }
-        std::cout << "------------------------------ net (sourceBlockName '" << p_net->getSourceBlockName() << "' - size: '" << p_net->getSinkBlockCount() << "') routed!\n";
+        printLogMessage("------------------------------ net routed!\n");
 
         assert(p_net->allPinsConnected());
     }

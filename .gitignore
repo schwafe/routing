@@ -51,3 +51,6 @@ _deps
 # my test files
 test files
 *.log
+
+#tests (for now, until they actually work)
+test
