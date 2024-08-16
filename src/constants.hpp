@@ -21,7 +21,7 @@ namespace constants
     const unsigned char invalidPlaceFile = 3;
 
     const unsigned char startingValueChannelWidth = 12;
-    const unsigned char maximumChannelWidth = 16;
+    const unsigned char maximumChannelWidth = 24;
 
     const std::regex globalPattern("^\\.global (\\S+)\\s*.*");
     const std::regex inputPattern("^\\.input (\\S+)\\s*.*");
