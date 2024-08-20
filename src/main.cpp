@@ -24,10 +24,10 @@ void abortIfTrue(bool condition, unsigned char errorCode, std::string errorMessa
 std::vector<std::shared_ptr<net>> sortNets(std::map<std::string, std::shared_ptr<net>> const &netsByNameOfTheNet, std::set<std::string> const &netsConnectedToClock,
                                            std::set<std::shared_ptr<net>> const &globalNets)
 {
-    std::multimap<unsigned short, std::shared_ptr<net>> netsGroupedBySinkBlockCount{};
-    std::multimap<unsigned short, std::shared_ptr<net>> netsConnectedToClockGroupedBySinkBlockCount{};
-    unsigned short highestSinkBlockCountClock = 0;
-    unsigned short highestSinkBlockCount = 0;
+    std::multimap<unsigned short, std::shared_ptr<net>> netsGroupedByConnectedBlockCount{};
+    std::multimap<unsigned short, std::shared_ptr<net>> netsConnectedToClockGroupedByConnectedBlockCount{};
+    unsigned short highestConnectedBlockCountClock = 0;
+    unsigned short highestConnectedBlockCount = 0;
 
     for (auto entry : netsByNameOfTheNet)
     {
@@ -36,42 +36,42 @@ std::vector<std::shared_ptr<net>> sortNets(std::map<std::string, std::shared_ptr
         {
             if (netsConnectedToClock.contains(entry.first))
             {
-                unsigned short sinkBlockCount = p_net->getSinkBlockCount();
-                netsConnectedToClockGroupedBySinkBlockCount.insert(std::make_pair(sinkBlockCount, p_net));
+                unsigned short connectedBlockCount = p_net->getConnectedBlockCount();
+                netsConnectedToClockGroupedByConnectedBlockCount.insert(std::make_pair(connectedBlockCount, p_net));
 
-                if (highestSinkBlockCountClock < sinkBlockCount)
-                    highestSinkBlockCountClock = sinkBlockCount;
+                if (highestConnectedBlockCountClock < connectedBlockCount)
+                    highestConnectedBlockCountClock = connectedBlockCount;
             }
             else
             {
-                netsGroupedBySinkBlockCount.insert(std::make_pair(p_net->getSinkBlockCount(), p_net));
-                if (highestSinkBlockCount < p_net->getSinkBlockCount())
-                    highestSinkBlockCount = p_net->getSinkBlockCount();
+                netsGroupedByConnectedBlockCount.insert(std::make_pair(p_net->getConnectedBlockCount(), p_net));
+                if (highestConnectedBlockCount < p_net->getConnectedBlockCount())
+                    highestConnectedBlockCount = p_net->getConnectedBlockCount();
             }
         }
     }
 
-    assert(!netsGroupedBySinkBlockCount.contains(0));
+    assert(!netsGroupedByConnectedBlockCount.contains(0));
 
     std::vector<std::shared_ptr<net>> sortedNets{};
     sortedNets.reserve(netsByNameOfTheNet.size());
 
-    while (highestSinkBlockCountClock > 0)
+    while (highestConnectedBlockCountClock > 0)
     {
-        auto range = netsConnectedToClockGroupedBySinkBlockCount.equal_range(highestSinkBlockCountClock);
+        auto range = netsConnectedToClockGroupedByConnectedBlockCount.equal_range(highestConnectedBlockCountClock);
         for (auto it = range.first; it != range.second; it++)
             sortedNets.push_back(std::shared_ptr<net>(it->second));
 
-        highestSinkBlockCountClock--;
+        highestConnectedBlockCountClock--;
     }
 
-    while (highestSinkBlockCount > 0)
+    while (highestConnectedBlockCount > 0)
     {
-        auto range = netsGroupedBySinkBlockCount.equal_range(highestSinkBlockCount);
+        auto range = netsGroupedByConnectedBlockCount.equal_range(highestConnectedBlockCount);
         for (auto it = range.first; it != range.second; it++)
             sortedNets.push_back(std::shared_ptr<net>(it->second));
 
-        highestSinkBlockCount--;
+        highestConnectedBlockCount--;
     }
 
     return sortedNets;
