@@ -4,8 +4,9 @@ TODO ressourcenoptimierung ?? (mehr std::move, emplace, &-Zugriff, etc. - wenige
 TODO Einträge der Pins in Kanälen [reachedBlocks] (bis zu zwei pro Kanal) für jeden Durchlauf des Algorithmus als eigene Struktur, statt Set?
 TODO CMake release option für maximale Geschwindigkeit auswählen
 
+TODO wie vpr einen pseudo-zufälligen Ansatz verwenden, um mit mehreren Versuchen ein besseres Ergebnis erzielen zu können?
 TODO vpr schafft ex5p mit 12 Kanälen - mein Programm bisher mit 16...
-TODO Sawitzki fragen: OPIN immer in .route, wenn in dem Kanal, der in der Zeile darauf kommt, ein output-pin ist? In tiny.route hat vpr das in Zeile 25 anders gemacht
+TODO Sawitzki sagen: manual erklärt nicht ausreichend, dass OPIN nur erneut auftaucht, wenn nicht die gleiche Spur wiederverwendet wird
 
 Erster Ansatz ist eine Rasterverdrahtung.
 

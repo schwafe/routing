@@ -6,14 +6,9 @@
 
 namespace constants
 {
-    // TODO change for standalone tests
-    const std::string netPrefix = "../test files/net/";
-    const std::string placePrefix = "../test files/vpr_placements/";
-    const std::string routingPrefix = "../test files/vpr_routings/";
-
     const std::string netSuffix = ".net";
-    const std::string placementSuffix = ".place";
-    const std::string routingSuffix = "_my.route";
+    const std::string placeSuffix = ".place";
+    const std::string routeSuffix = ".route";
 
     const unsigned char success = 0;
     const unsigned char wrongArguments = 1;
@@ -48,8 +43,8 @@ namespace constants
     const char irrelevantPinClass = -1;
     const unsigned char lowerInputPinNumber = 0;
     const unsigned char leftInputPinNumber = 1;
-    const unsigned char rightInputPinNumber = 2;
-    const unsigned char upperInputPinNumber = 3;
+    const unsigned char upperInputPinNumber = 2;
+    const unsigned char rightInputPinNumber = 3;
     const unsigned char outputPinNumber = 4;
 
     const unsigned char indexZero = 0;

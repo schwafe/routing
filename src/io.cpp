@@ -7,7 +7,7 @@ bool readNet(std::string fileName, std::map<std::string, std::shared_ptr<net>> &
              std::set<std::string> &netsConnectedToClock, std::set<std::shared_ptr<net>> &globalNets, std::map<std::string, std::shared_ptr<block>> &blocks, std::string &errorMessage)
 {
     std::ifstream netFile;
-    netFile.open(constants::netPrefix + fileName + constants::netSuffix);
+    netFile.open(fileName);
 
     std::string line;
 
@@ -179,7 +179,7 @@ bool readPlace(std::string fileName, unsigned char &arraySize, std::map<std::str
                std::string &errorMessage)
 {
     std::ifstream placeFile;
-    placeFile.open(constants::placePrefix + fileName + constants::placementSuffix);
+    placeFile.open(fileName);
 
     std::string line;
 
@@ -258,15 +258,15 @@ void writeRouting(std::string fileName, unsigned char arraySize, std::vector<std
                   std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     std::ofstream routingFile;
-    routingFile.open(constants::routingPrefix + fileName + constants::routingSuffix);
+    routingFile.open(fileName);
 
-    routingFile << "Array size: " << +arraySize << " x " << +arraySize << " logic blocks.\n\nRouting:\n";
+    routingFile << "Array size: " << +arraySize << " x " << +arraySize << " logic blocks.\n\nRouting:";
 
     unsigned char globalIndex = 0;
 
     for (std::shared_ptr<net> p_net : globalNets)
     {
-        routingFile << "\nNet " << +(globalIndex++) << " (" << p_net->getName() << "): global net connecting:\n\n";
+        routingFile << "\n\nNet " << +(globalIndex++) << " (" << p_net->getName() << "): global net connecting:\n\n";
 
         assert(blocks.contains(p_net->getSourceBlockName()));
         std::shared_ptr<block> p_block = blocks.find(p_net->getSourceBlockName())->second;
@@ -288,14 +288,14 @@ void writeRouting(std::string fileName, unsigned char arraySize, std::vector<std
                 routingFile << +constants::irrelevantPinClass;
             routingFile << ".\n";
         }
-        routingFile << '\n';
     }
 
     for (unsigned short index = 0; index < sortedNets.size(); index++)
     {
         std::shared_ptr<net> p_net = sortedNets[index];
+        std::set<unsigned char> usedTracksAtSourceChannel{};
 
-        routingFile << "\nNet " << (index + globalIndex) << " (" << p_net->getName() << ")\n\n";
+        routingFile << "\n\nNet " << (index + globalIndex) << " (" << p_net->getName() << ")\n\n";
 
         assert(blocks.contains(p_net->getSourceBlockName()));
         std::shared_ptr<block> p_sourceBlock = blocks.find(p_net->getSourceBlockName())->second;
@@ -319,19 +319,25 @@ void writeRouting(std::string fileName, unsigned char arraySize, std::vector<std
             for (auto revIt = connection.rbegin(); revIt != connection.rend(); revIt++)
             {
                 channel = revIt->first;
+                unsigned char track = revIt->second;
 
                 if (channel == p_net->getSourceChannel())
                 {
                     assert(revIt == connection.rbegin());
 
-                    routingFile << "  OPIN (" << +p_sourceBlock->getX() << "," << +p_sourceBlock->getY() << ")  ";
-                    if (p_sourceBlock->getType() == constants::blockTypeCLB)
-                        routingFile << "Pin: " << +constants::outputPinNumber << "  \n";
-                    else
-                        routingFile << "Pad: " << +subblockNumber << "  \n";
+                    if (!usedTracksAtSourceChannel.contains(track))
+                    {
+                        routingFile << "  OPIN (" << +p_sourceBlock->getX() << "," << +p_sourceBlock->getY() << ")  ";
+                        if (p_sourceBlock->getType() == constants::blockTypeCLB)
+                            routingFile << "Pin: " << +constants::outputPinNumber << "  \n";
+                        else
+                            routingFile << "Pad: " << +subblockNumber << "  \n";
+
+                        usedTracksAtSourceChannel.emplace(track);
+                    }
                 }
 
-                routingFile << " CHAN" << channel.getType() << " (" << +channel.getXCoordinate() << ',' << +channel.getYCoordinate() << ")  Track: " << +revIt->second << "  \n";
+                routingFile << " CHAN" << channel.getType() << " (" << +channel.getXCoordinate() << ',' << +channel.getYCoordinate() << ")  Track: " << +track << "  \n";
             }
 
             if (p_block->getType() == constants::blockTypeCLB)
@@ -341,11 +347,11 @@ void writeRouting(std::string fileName, unsigned char arraySize, std::vector<std
             }
             else
             {
-                routingFile << "  IPIN (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: 0  \n  SINK (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: "
+                routingFile << "  IPIN (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: " << +p_block->getSubblockNumber() << "  \n  SINK (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pad: "
                             << +p_block->getSubblockNumber() << "  \n";
             }
         }
-        routingFile << "\n";
     }
+
     routingFile.close();
 }

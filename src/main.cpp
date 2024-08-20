@@ -1,7 +1,7 @@
 // TODO enable for last version
 #define NDEBUG
 
-#include <chrono>
+#include <time.h>
 #include <iostream>
 #include <regex>
 #include <cassert>
@@ -77,6 +77,26 @@ std::vector<std::shared_ptr<net>> sortNets(std::map<std::string, std::shared_ptr
     return sortedNets;
 }
 
+std::vector<std::shared_ptr<net>> readNetsAndBlocks(std::string netFileName, std::string placeFileName, unsigned char &arraySize, std::map<std::string, std::shared_ptr<block>> &blocks,
+                                                    std::set<std::shared_ptr<net>> &globalNets)
+{
+    std::string errorMessage{};
+    bool success{};
+    std::map<std::string, std::shared_ptr<net>> netsByNameOfTheSourceBlock{};
+    std::map<std::string, std::shared_ptr<net>> netsByNameOfTheNet{};
+    std::set<std::string> netsConnectedToClock{};
+
+    success = readNet(netFileName, netsByNameOfTheSourceBlock, netsByNameOfTheNet, netsConnectedToClock, globalNets, blocks, errorMessage);
+    abortIfTrue(!success, constants::invalidNetFile, errorMessage);
+
+    success = readPlace(placeFileName, arraySize, netsByNameOfTheSourceBlock, blocks, errorMessage);
+    abortIfTrue(!success, constants::invalidPlaceFile, errorMessage);
+
+    assert(netsByNameOfTheNet.size() == netsByNameOfTheSourceBlock.size());
+
+    return sortNets(netsByNameOfTheNet, netsConnectedToClock, globalNets);
+}
+
 void deepCopy(std::vector<std::shared_ptr<net>> sortedNets, std::vector<std::shared_ptr<net>> &copyOfSortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks, std::map<std::string, std::shared_ptr<block>> &copyOfBlocks)
 {
     copyOfSortedNets = std::vector<std::shared_ptr<net>>{};
@@ -91,35 +111,19 @@ void deepCopy(std::vector<std::shared_ptr<net>> sortedNets, std::vector<std::sha
 
 int main(int argc, char *argv[])
 {
+    clock_t startTime = clock();
 
-    auto startTime = std::chrono::steady_clock::now();
-
-    abortIfTrue(argc != 2, constants::wrongArguments, "Argument count unexpected! Arguments received: '" + argsToString(argc, argv) + " Please enter just one argument: the filename for the .net and .place files to be used.");
-
-    printLogMessage("Program start!");
+    abortIfTrue(argc != 4, constants::wrongArguments, "Argument count unexpected! Arguments received: '" + argsToString(argc, argv) + " Please enter exactly three arguments: the filenames of the .net and .place files to be read and the filename of the .route file to be written.");
 
     unsigned char arraySize{};
+    std::string netFileName = argv[1];
+    std::string placeFileName = argv[2];
+    std::string routeFileName = argv[3];
     std::map<std::string, std::shared_ptr<block>> blocks{};
-    std::map<std::string, std::shared_ptr<net>> netsByNameOfTheSourceBlock{};
-    std::map<std::string, std::shared_ptr<net>> netsByNameOfTheNet{};
-    std::set<std::string> netsConnectedToClock{};
     std::set<std::shared_ptr<net>> globalNets{};
 
-    std::string fileName = argv[1];
-    std::string errorMessage{};
-    bool success{};
-
-    success = readNet(fileName, netsByNameOfTheSourceBlock, netsByNameOfTheNet, netsConnectedToClock, globalNets, blocks, errorMessage);
-    abortIfTrue(!success, constants::invalidNetFile, errorMessage);
-
-    success = readPlace(fileName, arraySize, netsByNameOfTheSourceBlock, blocks, errorMessage);
-    abortIfTrue(!success, constants::invalidPlaceFile, errorMessage);
-
-    assert(netsByNameOfTheNet.size() == netsByNameOfTheSourceBlock.size());
-
-    std::vector<std::shared_ptr<net>> sortedNets = sortNets(netsByNameOfTheNet, netsConnectedToClock, globalNets);
-
     unsigned char channelwidth = constants::startingValueChannelWidth;
+    std::vector<std::shared_ptr<net>> sortedNets = readNetsAndBlocks(netFileName, placeFileName, arraySize, blocks, globalNets);
 
     std::string logMessage = "The .net and .place files have been successfully read!\nThe arraySize is " + std::to_string(+arraySize) + ".\n" + std::to_string(sortedNets.size() + globalNets.size()) + " nets ";
     if (globalNets.size() > 0)
@@ -127,6 +131,7 @@ int main(int argc, char *argv[])
     logMessage += "and " + std::to_string(blocks.size()) + " blocks have been read.\n";
     printLogMessage(logMessage);
 
+    bool success{};
     unsigned char successfulWidth = std::numeric_limits<unsigned char>::max();
     unsigned char failedWidth = 0;
     std::vector<std::shared_ptr<net>> tempSortedNets{}, finalSortedNets{};
@@ -165,12 +170,13 @@ int main(int argc, char *argv[])
     printLogMessage("Using the result from the successful run with a channelwidth of " + std::to_string(+successfulWidth) + " tracks!");
 
     printLogMessage("Writing routing file!");
-    writeRouting(fileName, arraySize, finalSortedNets, globalNets, finalBlocks);
+    writeRouting(routeFileName, arraySize, finalSortedNets, globalNets, finalBlocks);
 
-    auto endTime = std::chrono::steady_clock::now();
-    std::chrono::duration<double> duration{endTime - startTime};
-    
-    printLogMessage("The program ran for " + std::format("{}",duration.count()) + " seconds.");
+    clock_t endTime = clock();
+
+    double duration = 1.0 * (endTime - startTime) / CLOCKS_PER_SEC;
+
+    printf("Program ran for: %.3f seconds.\n", duration);
 
     return constants::success;
 }
