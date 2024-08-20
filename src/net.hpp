@@ -31,13 +31,12 @@ public:
 
     bool usedChannel(const channelID &channel) const;
     bool allPinsConnected() const;
-    std::string listConnectedBlocks() const;
-    unsigned char chooseUsedTrack(const channelID &channel, const unsigned char &optimalTrack) const;
+    unsigned char chooseUsedTrack(const channelID &channel, unsigned char optimalTrack) const;
 
     void setSourceChannel(channelID sourceChannel);
     void setSourceBlockName(std::string sourceBlockName);
     void addSinkBlock(std::string sinkBlockName);
-    void setUsedTrack(const channelID &channel, const unsigned char &track);
+    void setUsedTrack(channelID channel, unsigned char track);
     void setConnection(std::string sinkBlockName, std::vector<std::pair<channelID, unsigned char>> connectionToSink);
 };
 

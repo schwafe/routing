@@ -1,5 +1,5 @@
 // TODO enable for last version
-#define NDEBUG
+// #define NDEBUG
 
 #include <time.h>
 #include <iostream>
@@ -77,8 +77,8 @@ std::vector<std::shared_ptr<net>> sortNets(std::map<std::string, std::shared_ptr
     return sortedNets;
 }
 
-std::vector<std::shared_ptr<net>> readNetsAndBlocks(std::string netFileName, std::string placeFileName, unsigned char &arraySize, std::map<std::string, std::shared_ptr<block>> &blocks,
-                                                    std::set<std::shared_ptr<net>> &globalNets)
+std::vector<std::shared_ptr<net>> readNetsAndBlocks(std::string const &netFileName, std::string const &placeFileName, unsigned char &arraySize,
+                                                    std::map<std::string, std::shared_ptr<block>> &blocks, std::set<std::shared_ptr<net>> &globalNets)
 {
     std::string errorMessage{};
     bool success{};
@@ -97,7 +97,8 @@ std::vector<std::shared_ptr<net>> readNetsAndBlocks(std::string netFileName, std
     return sortNets(netsByNameOfTheNet, netsConnectedToClock, globalNets);
 }
 
-void deepCopy(std::vector<std::shared_ptr<net>> sortedNets, std::vector<std::shared_ptr<net>> &copyOfSortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks, std::map<std::string, std::shared_ptr<block>> &copyOfBlocks)
+void deepCopy(std::vector<std::shared_ptr<net>> const &sortedNets, std::vector<std::shared_ptr<net>> &copyOfSortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks,
+              std::map<std::string, std::shared_ptr<block>> &copyOfBlocks)
 {
     copyOfSortedNets = std::vector<std::shared_ptr<net>>{};
     copyOfBlocks = std::map<std::string, std::shared_ptr<block>>{};

@@ -50,7 +50,7 @@ std::vector<std::pair<std::string, std::vector<std::pair<channelID, unsigned cha
     return connectionsByRoutingOrder;
 }
 
-unsigned char net::chooseUsedTrack(const channelID &channel, const unsigned char &optimalTrack) const
+unsigned char net::chooseUsedTrack(const channelID &channel, unsigned char optimalTrack) const
 {
     assert(usedTracks.contains(channel));
     auto range = usedTracks.equal_range(channel);
@@ -85,7 +85,7 @@ void net::addSinkBlock(std::string sinkBlockName)
     sinkBlockNames.emplace(sinkBlockName);
 }
 
-void net::setUsedTrack(const channelID &channel, const unsigned char &track)
+void net::setUsedTrack(channelID channel, unsigned char track)
 {
     usedTracks.emplace(channel, track);
 }

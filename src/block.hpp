@@ -24,9 +24,9 @@ public:
     unsigned char getSubblockNumber() const;
     std::set<channelID> getOpenChannels() const;
 
-    unsigned char determinePinNumber(channelID channel) const;
+    unsigned char determinePinNumber(channelID const &channel) const;
 
-    void setChannelTaken(channelID channel);
+    void setChannelTaken(channelID const &channel);
 };
 
 #endif

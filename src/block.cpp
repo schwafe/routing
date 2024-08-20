@@ -7,7 +7,7 @@ block::block(char type)
     block::type = type;
 }
 
-block::block(const block &other)
+block::block(block const &other)
 {
     type = other.type;
     x = other.x;
@@ -77,7 +77,7 @@ std::set<channelID> block::getOpenChannels() const
     return openChannels;
 }
 
-unsigned char block::determinePinNumber(channelID channel) const
+unsigned char block::determinePinNumber(channelID const &channel) const
 {
     unsigned char number = -1;
     if (channel.getYCoordinate() != y)
@@ -105,7 +105,7 @@ unsigned char block::determinePinNumber(channelID channel) const
     return number;
 }
 
-void block::setChannelTaken(channelID channel)
+void block::setChannelTaken(channelID const &channel)
 {
     assert(openChannels.contains(channel));
     openChannels.erase(channel);

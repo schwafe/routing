@@ -5,7 +5,7 @@
 #include "constants.hpp"
 #include "net.hpp"
 
-std::map<channelID, std::set<std::string>> generateRelevantChannels(std::shared_ptr<net> p_net, std::map<std::string, std::shared_ptr<block>> const &blocks)
+std::map<channelID, std::set<std::string>> generateRelevantChannels(std::shared_ptr<net> const &p_net, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     std::map<channelID, std::set<std::string>> relevantChannels{};
     for (std::string sinkBlockName : p_net->getSinkBlockNames())
@@ -27,7 +27,7 @@ std::map<channelID, std::set<std::string>> generateRelevantChannels(std::shared_
     return relevantChannels;
 }
 
-void removeOtherChannelEntries(std::map<channelID, std::set<std::string>> &relevantChannels, const std::string &blockName, const std::set<channelID> &openChannels)
+void removeOtherChannelEntries(std::map<channelID, std::set<std::string>> &relevantChannels, std::string const &blockName, std::set<channelID> const &openChannels)
 {
     for (channelID channel : openChannels)
     {
@@ -39,7 +39,7 @@ void removeOtherChannelEntries(std::map<channelID, std::set<std::string>> &relev
     }
 }
 
-void registerIndex(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, const channelID &channel, const unsigned char &index)
+void registerIndex(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, channelID channel, unsigned char index)
 {
     assert(!channelToIndex.contains(channel) || channelToIndex.find(channel)->second > index || (channelToIndex.find(channel)->second == constants::indexZero && index == constants::indexZero));
     channelToIndex.insert_or_assign(channel, index);
@@ -48,8 +48,8 @@ void registerIndex(std::map<channelID, unsigned char> &channelToIndex, std::map<
     indexToChannels.find(index)->second.emplace(channel);
 }
 
-channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, const unsigned char &arraySize, unsigned char &indexOfSink,
-                   const unsigned char &channelwidth, auto &channelInformation, auto &relevantChannels, unsigned short &numberOfPinsReached, std::set<std::string> &reachedBlocks, const auto &blocks)
+channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, unsigned char arraySize, unsigned char &indexOfSink,
+                   unsigned char channelwidth, auto const &channelInformation, auto &relevantChannels, unsigned short &numberOfPinsReached, std::set<std::string> &reachedBlocks, auto const &blocks)
 {
     std::set<channelID> processedChannels{};
     unsigned char index = constants::indexZero;
@@ -110,7 +110,7 @@ channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<
     return channelID{};
 }
 
-void useChannel(const channelID &channel, std::shared_ptr<net> p_net, auto &channelInformation, std::vector<std::pair<channelID, unsigned char>> &connectionToSink,
+void useChannel(channelID channel, std::shared_ptr<net> const &p_net, std::map<channelID, channelInfo> &channelInformation, std::vector<std::pair<channelID, unsigned char>> &connectionToSink,
                 std::set<channelID> &usedChannels, unsigned char &currentTrack)
 {
     assert(channelInformation.contains(channel));
@@ -127,8 +127,8 @@ void useChannel(const channelID &channel, std::shared_ptr<net> p_net, auto &chan
     usedChannels.insert(channel);
 }
 
-std::vector<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize, auto &channelToIndex, auto &indexToChannels, std::shared_ptr<net> p_net, const channelID &sink,
-                                                         unsigned char &indexOfSink, auto &channelInformation)
+std::vector<std::pair<channelID, unsigned char>> retrace(auto &channelToIndex, auto &indexToChannels, std::shared_ptr<net> const &p_net, channelID sink, unsigned char indexOfSink,
+                                                         std::map<channelID, channelInfo> &channelInformation)
 {
     assert(sink.isInitialized());
 
@@ -138,7 +138,7 @@ std::vector<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize
 
     useChannel(sink, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
-    //printLogMessage("-------------\nsink: " + channelIDToString(sink));
+    // printLogMessage("-------------\nsink: " + channelIDToString(sink));
 
     // printIndices(channelToIndex);
 
@@ -148,11 +148,11 @@ std::vector<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize
     do
     {
         expectedIndex--;
-        //printLogMessage("expected Index: " + std::to_string(+expectedIndex));
+        // printLogMessage("expected Index: " + std::to_string(+expectedIndex));
 
         assert(indexToChannels.contains(expectedIndex));
         channelID chosenChannel = currentChannel.chooseNeighbour(indexToChannels.find(expectedIndex)->second, currentTrack, channelInformation);
-        //printLogMessage("chosenChannel:" + channelIDToString(chosenChannel));
+        // printLogMessage("chosenChannel:" + channelIDToString(chosenChannel));
 
         useChannel(chosenChannel, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
 
@@ -167,7 +167,7 @@ std::vector<std::pair<channelID, unsigned char>> retrace(unsigned char arraySize
 
 /* @return false if a net could not be routed with the given channelwidth, true if all nets were routed successfully
  */
-bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth, std::vector<std::shared_ptr<net>> const &sortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks)
+bool routeNets(unsigned char arraySize, unsigned char channelwidth, std::vector<std::shared_ptr<net>> const &sortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     std::map<channelID, channelInfo> channelInformation = generateChannelInformation(arraySize);
 
@@ -175,7 +175,7 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
     {
         std::shared_ptr<net> p_net = sortedNets[index];
 
-        //printLogMessage("Routing net with sourceBlockName '" + p_net->getSourceBlockName() + "' and " + std::to_string(p_net->getSinkBlockCount()) + " sink-blocks: '" + listConnectedBlocks(p_net) + "'");
+        // printLogMessage("Routing net with sourceBlockName '" + p_net->getSourceBlockName() + "' and " + std::to_string(p_net->getSinkBlockCount()) + " sink-blocks: '" + listConnectedBlocks(p_net) + "'");
 
         channelID sourceChannel = p_net->getSourceChannel();
         assert(channelInformation.contains(sourceChannel));
@@ -212,7 +212,7 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
                 p_block->setChannelTaken(sourceChannel);
                 removeOtherChannelEntries(relevantChannels, associatedBlockName, p_block->getOpenChannels());
 
-                //printLogMessage("pin of block '" + associatedBlockName + "' at source channel!\n");
+                // printLogMessage("pin of block '" + associatedBlockName + "' at source channel!\n");
                 numberOfPinsReached++;
             }
         }
@@ -225,17 +225,17 @@ bool routeNets(unsigned char const &arraySize, unsigned char const &channelwidth
             if (!sink.isInitialized())
                 return false;
 
-            std::vector<std::pair<channelID, unsigned char>> connectionToSink = retrace(arraySize, channelToIndex, indexToChannels, p_net, sink, indexOfSink, channelInformation);
+            std::vector<std::pair<channelID, unsigned char>> connectionToSink = retrace(channelToIndex, indexToChannels, p_net, sink, indexOfSink, channelInformation);
 
             assert(reachedBlocks.size() != 0);
             for (std::string blockName : reachedBlocks)
             {
-                //printLogMessage("reached block '" + blockName + "'\n");
-                // 1-2 blocks
+                // printLogMessage("reached block '" + blockName + "'\n");
+                //  1-2 blocks
                 p_net->setConnection(blockName, connectionToSink);
             }
         }
-        //printLogMessage("------------------------------ net routed!\n");
+        // printLogMessage("------------------------------ net routed!\n");
 
         assert(p_net->allPinsConnected());
     }
