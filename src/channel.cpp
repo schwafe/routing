@@ -75,7 +75,7 @@ char channelID::getType() const
 std::set<channelID> channelID::getNeighbours(unsigned char arraySize) const
 {
     std::set<channelID> neighbours{};
-    if (channelID::type == constants::channelTypeX)
+    if (type == constants::channelTypeX)
     {
         if (y > 0)
         {
@@ -120,11 +120,48 @@ std::set<channelID> channelID::getNeighbours(unsigned char arraySize) const
     return neighbours;
 }
 
-channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, unsigned char currentTrack, std::map<channelID, channelInfo> const &channelInformation) const
+std::map<channelID, channelInfo> generateChannelInformation(unsigned char arraySize)
 {
+    std::map<channelID, channelInfo> channelInformation{};
+    for (int x = 1; x <= arraySize; x++)
+    {
+        for (int y = 0; y <= arraySize; y++)
+        {
+            channelInformation.emplace(channelID(x, y, constants::channelTypeX), channelInfo{});
+        }
+    }
+
+    for (int x = 0; x <= arraySize; x++)
+    {
+        for (int y = 1; y <= arraySize; y++)
+        {
+            channelInformation.emplace(channelID(x, y, constants::channelTypeY), channelInfo{});
+        }
+    }
+
+    return channelInformation;
+}
+
+bool isChannelFull(channelID const &channel, std::map<channelID, channelInfo> const &channelInformation, unsigned char channelWidth)
+{
+    assert(channelInformation.contains(channel));
+    return channelInformation.find(channel)->second.isFull(channelWidth);
+}
+
+unsigned char useChannel(channelID const &channel, std::map<channelID, channelInfo> &channelInformation, unsigned char optimalTrack)
+{
+    assert(channelInformation.contains(channel));
+    return channelInformation.find(channel)->second.useChannel(optimalTrack);
+}
+
+channelID chooseNeighbouringChannel(channelID channel, std::set<channelID> const &validChannels, unsigned char currentTrack, std::map<channelID, channelInfo> const &channelInformation)
+{
+    unsigned char x = channel.getXCoordinate();
+    unsigned char y = channel.getYCoordinate();
+
     channelID chosenNeighbour{};
     channelID channelA{}, channelB{};
-    if (channelID::type == constants::channelTypeX)
+    if (channel.getType() == constants::channelTypeX)
     {
         channelA = channelID(x - 1, y, constants::channelTypeX);
         channelB = channelID(x + 1, y, constants::channelTypeX);
@@ -158,7 +195,7 @@ channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, u
         // no same type neighbour was valid, so now other type neighbours are searched
 
         std::set<channelID> neighbours{};
-        if (type == constants::channelTypeX)
+        if (channel.getType() == constants::channelTypeX)
         {
             neighbours.emplace(x - 1, y, constants::channelTypeY);
             neighbours.emplace(x, y, constants::channelTypeY);
@@ -204,26 +241,4 @@ channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, u
         assert(chosenChannel.isInitialized());
         return chosenChannel;
     }
-}
-
-std::map<channelID, channelInfo> generateChannelInformation(unsigned char arraySize)
-{
-    std::map<channelID, channelInfo> channelInformation{};
-    for (int x = 1; x <= arraySize; x++)
-    {
-        for (int y = 0; y <= arraySize; y++)
-        {
-            channelInformation.emplace(channelID(x, y, constants::channelTypeX), channelInfo{});
-        }
-    }
-
-    for (int x = 0; x <= arraySize; x++)
-    {
-        for (int y = 1; y <= arraySize; y++)
-        {
-            channelInformation.emplace(channelID(x, y, constants::channelTypeY), channelInfo{});
-        }
-    }
-
-    return channelInformation;
 }
