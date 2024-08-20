@@ -5,32 +5,34 @@
 #include "constants.hpp"
 #include "net.hpp"
 
-std::map<channelID, std::set<std::string>> generateRelevantChannels(std::set<channelID> &doublyRelevantChannels, std::shared_ptr<net> const &p_net, std::map<std::string, std::shared_ptr<block>> const &blocks)
+std::map<channelID, std::set<std::string>> findRelevantChannels(std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels,
+                                                                std::shared_ptr<net> const &p_net, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
-    std::map<channelID, std::set<std::string>> relevantChannels{};
-    for (std::string sinkBlockName : p_net->getSinkBlockNames())
+    for (std::string connectedBlockName : p_net->getNamesOfConnectedBlocks())
     {
-        assert(blocks.contains(sinkBlockName));
-        for (channelID channel : blocks.find(sinkBlockName)->second->getOpenChannels())
+        assert(blocks.contains(connectedBlockName));
+        for (channelID channelWithPin : blocks.find(connectedBlockName)->second->getOpenChannels())
         {
-            if (relevantChannels.contains(channel))
+            if (auto it = relevantChannels.find(channelWithPin); it != relevantChannels.end())
             {
-                relevantChannels.find(channel)->second.insert(sinkBlockName);
-                assert(relevantChannels.find(channel)->second.size() == 2);
-                assert(!doublyRelevantChannels.contains(channel));
-                doublyRelevantChannels.insert(channel);
+                it->second.insert(connectedBlockName);
+                assert(relevantChannels.find(channelWithPin)->second.size() == 2);
+                assert(!doublyRelevantChannels.contains(channelWithPin));
+                doublyRelevantChannels.insert(channelWithPin);
             }
             else
             {
-                std::set<std::string> associatedBlocks{sinkBlockName};
-                relevantChannels.insert(std::make_pair(channel, associatedBlocks));
+                std::set<std::string> associatedBlocks{connectedBlockName};
+                relevantChannels.insert(std::make_pair(channelWithPin, associatedBlocks));
             }
         }
     }
     return relevantChannels;
 }
 
-void registerIndex(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, channelID channel, unsigned char index)
+/* Adds or overwrites the entry in channelToIndex with the given index and adds the channel to the set of channels for the given index in indexToChannels.
+Other entries for the same channel may exist in indexToChannels. */
+void registerIndex(channelID channel, unsigned char index, std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels)
 {
     assert(!channelToIndex.contains(channel) || channelToIndex.find(channel)->second > index || (channelToIndex.find(channel)->second == constants::indexZero && index == constants::indexZero));
     channelToIndex.insert_or_assign(channel, index);
@@ -39,10 +41,9 @@ void registerIndex(std::map<channelID, unsigned char> &channelToIndex, std::map<
     indexToChannels.find(index)->second.emplace(channel);
 }
 
-void updateBlocksAndRelevantChannels(channelID const &channel, std::string const &blockName, std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels, auto const &blocks)
+/* TODO split up? */
+void updateBlockAndRelevantChannels(channelID const &channel, std::shared_ptr<block> const &p_block, std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels, auto const &blocks)
 {
-    assert(blocks.contains(blockName));
-    std::shared_ptr<block> p_block = blocks.find(blockName)->second;
     p_block->setChannelTaken(channel);
 
     for (channelID channel : p_block->getOpenChannels())
@@ -60,9 +61,19 @@ void updateBlocksAndRelevantChannels(channelID const &channel, std::string const
     }
 }
 
-channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, unsigned char arraySize, unsigned char &indexOfSink,
-                   unsigned char channelwidth, auto const &channelInformation, auto &relevantChannels, std::set<channelID> &doublyRelevantChannels,
-                   unsigned short &numberOfPinsReached, std::set<std::string> &reachedBlocks, auto const &blocks)
+/* Finds a pin by searching neighbouring channels of the channels in indexToChannels at index zero. Updates indexToChannels and channelToIndex to find relevant channels faster in the next
+iteration. RelevantChannels and doublyRelevantChannels indicate which channels contain pins and are updated before returning the chosen channel.
+
+Starts with one or more channels, that are already part of the net.
+Searches the neighbouring channels of the channels, that are have already been searched (or in the first round the channels, that are part of the net).
+If a channel, that contains a pin, that needs to be connected to the net, ('relevant channel') is found, this is noted. If channels exist, that contain two pins, that need to be connected,
+('doubly relevant channel') the search continues for two iterations or until such a channel is found. If no doubly relevant channel is found, the first relevant channel, that was found, is
+returned. If no doubly relevant channel exists, the search stops as soon as any relevant channel is found.
+    @return if the search is successful: the chosen channel, that contains or two pins, that need to be connected to the net - if not: a channel created with the default constructor
+*/
+channelID findPin(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, unsigned char arraySize, unsigned char &indexOfSink,
+                  unsigned char channelWidth, auto const &channelInformation, auto &relevantChannels, std::set<channelID> &doublyRelevantChannels,
+                  unsigned short &numberOfPinsReached, std::set<std::string> &reachedBlocks, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     std::set<channelID> processedChannels{};
     unsigned char currentIndex = constants::indexZero;
@@ -81,8 +92,6 @@ channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<
 
             for (channelID neighbour : channel.getNeighbours(arraySize))
             {
-                assert(channelInformation.contains(neighbour));
-
                 if (auto it = channelToIndex.find(neighbour); it != channelToIndex.end())
                 {
                     assert(it->second >= currentIndex - 1);
@@ -103,7 +112,7 @@ channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<
                         relevantChannelFound = true;
                     }
                 }
-                else if (!channelInformation.find(neighbour)->second.isFull(channelwidth))
+                else if (isChannelFull(neighbour, channelInformation, channelWidth))
                 {
                     registerIndex(channelToIndex, indexToChannels, neighbour, expectedIndex);
 
@@ -113,7 +122,7 @@ channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<
                         for (std::string associatedBlockName : relevantChannels.find(neighbour)->second)
                         {
                             reachedBlocks.insert(associatedBlockName);
-                            updateBlocksAndRelevantChannels(neighbour, associatedBlockName, relevantChannels, doublyRelevantChannels, blocks);
+                            updateBlockAndRelevantChannels(neighbour, blocks.find(associatedBlockName)->second, relevantChannels, doublyRelevantChannels, blocks);
                         }
 
                         relevantChannels.erase(neighbour);
@@ -144,7 +153,7 @@ channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<
         for (std::string associatedBlockName : relevantChannels.find(relevantChannel)->second)
         {
             reachedBlocks.insert(associatedBlockName);
-            updateBlocksAndRelevantChannels(relevantChannel, associatedBlockName, relevantChannels, doublyRelevantChannels, blocks);
+            updateBlockAndRelevantChannels(relevantChannel, blocks.find(associatedBlockName)->second, relevantChannels, doublyRelevantChannels, blocks);
         }
 
         relevantChannels.erase(relevantChannel);
@@ -157,20 +166,18 @@ channelID findSink(std::map<channelID, unsigned char> &channelToIndex, std::map<
         return channelID{};
 }
 
-void useChannel(channelID channel, std::shared_ptr<net> const &p_net, std::map<channelID, channelInfo> &channelInformation, std::vector<std::pair<channelID, unsigned char>> &connectionToSink,
+void useChannel(channelID channel, std::shared_ptr<net> const &p_net, std::map<channelID, channelInfo> &channelInformation, std::vector<std::pair<channelID, unsigned char>> &connectionToBlock,
                 std::set<channelID> &usedChannels, unsigned char &currentTrack)
 {
-    assert(channelInformation.contains(channel));
-
     if (p_net->usedChannel(channel))
         currentTrack = p_net->chooseUsedTrack(channel, currentTrack);
     else
     {
-        currentTrack = channelInformation.find(channel)->second.useChannel(currentTrack);
+        currentTrack = useChannel(channel, channelInformation, currentTrack);
         p_net->setUsedTrack(channel, currentTrack);
     }
 
-    connectionToSink.emplace_back(channel, currentTrack);
+    connectionToBlock.emplace_back(channel, currentTrack);
     usedChannels.insert(channel);
 }
 
@@ -180,14 +187,10 @@ std::vector<std::pair<channelID, unsigned char>> retrace(auto &channelToIndex, a
     assert(sink.isInitialized());
 
     std::set<channelID> usedChannels{};
-    std::vector<std::pair<channelID, unsigned char>> connectionToSink{};
+    std::vector<std::pair<channelID, unsigned char>> connectionToBlock{};
     unsigned char currentTrack = std::numeric_limits<unsigned char>::max();
 
-    useChannel(sink, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
-
-    // printLogMessage("-------------\nsink: " + channelIDToString(sink));
-
-    // printIndices(channelToIndex);
+    useChannel(sink, p_net, channelInformation, connectionToBlock, usedChannels, currentTrack);
 
     channelID currentChannel = sink;
     unsigned char expectedIndex = indexOfSink;
@@ -195,95 +198,88 @@ std::vector<std::pair<channelID, unsigned char>> retrace(auto &channelToIndex, a
     do
     {
         expectedIndex--;
-        // printLogMessage("expected Index: " + std::to_string(+expectedIndex));
 
         assert(indexToChannels.contains(expectedIndex));
-        channelID chosenChannel = currentChannel.chooseNeighbour(indexToChannels.find(expectedIndex)->second, currentTrack, channelInformation);
-        // printLogMessage("chosenChannel:" + channelIDToString(chosenChannel));
+        channelID chosenChannel = chooseNeighbouringChannel(currentChannel, indexToChannels.find(expectedIndex)->second, currentTrack, channelInformation);
 
-        useChannel(chosenChannel, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
+        useChannel(chosenChannel, p_net, channelInformation, connectionToBlock, usedChannels, currentTrack);
 
         currentChannel = chosenChannel;
     } while (expectedIndex > 0);
 
     for (channelID channel : usedChannels)
-        registerIndex(channelToIndex, indexToChannels, channel, constants::indexZero);
+        registerIndex(channel, constants::indexZero, channelToIndex, indexToChannels);
 
-    return connectionToSink;
+    return connectionToBlock;
 }
 
-/* @return false if a net could not be routed with the given channelwidth, true if all nets were routed successfully
+/* @return false if a net could not be routed with the given channelWidth, true if all nets were routed successfully
  */
-bool routeNets(unsigned char arraySize, unsigned char channelwidth, std::vector<std::shared_ptr<net>> const &sortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks)
+bool routeNets(unsigned char arraySize, unsigned char channelWidth, std::vector<std::shared_ptr<net>> const &sortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     std::map<channelID, channelInfo> channelInformation = generateChannelInformation(arraySize);
 
-    for (unsigned short index = 0; index < sortedNets.size(); index++)
+    for (std::shared_ptr<net> const &p_net : sortedNets)
     {
-        std::shared_ptr<net> p_net = sortedNets[index];
-
-        // printLogMessage("Routing net with sourceBlockName '" + p_net->getSourceBlockName() + "' and " + std::to_string(p_net->getSinkBlockCount()) + " sink-blocks: '" + listConnectedBlocks(p_net) + "'");
-
         channelID sourceChannel = p_net->getSourceChannel();
-        assert(channelInformation.contains(sourceChannel));
-        if (channelInformation.find(sourceChannel)->second.isFull(channelwidth))
+        if (isChannelFull(sourceChannel, channelInformation, channelWidth))
+        {
+            printLogMessage("Routing failed due to the source channel of block '" + p_net->getSourceBlockName() + "' being full.");
             return false;
+        }
 
+        /* stores channels, that contain input pins of two blocks, that are to be connected to the net*/
         std::set<channelID> doublyRelevantChannels{};
-        // stores the channels, that contain pins of this net and for each pin the associated blockname
-        std::map<channelID, std::set<std::string>> relevantChannels = generateRelevantChannels(doublyRelevantChannels, p_net, blocks);
+        /* stores channels, that contain pins of blocks, that are to be connected to the net and for each channel the names of the blocks */
+        std::map<channelID, std::set<std::string>> relevantChannels{};
+        findRelevantChannels(relevantChannels, doublyRelevantChannels, p_net, blocks);
 
         std::map<channelID, unsigned char> channelToIndex{};
         // can contain multiple entries for a channel - only the lowest is of relevance
         std::map<unsigned char, std::set<channelID>> indexToChannels{};
         unsigned short numberOfPinsReached{};
 
-        registerIndex(channelToIndex, indexToChannels, sourceChannel, constants::indexZero);
+        registerIndex(sourceChannel, constants::indexZero, channelToIndex, indexToChannels);
 
         auto it = relevantChannels.find(sourceChannel);
         if (it != relevantChannels.end())
         {
             std::set<channelID> usedChannels{};
-            std::vector<std::pair<channelID, unsigned char>> connectionToSink{};
+            std::vector<std::pair<channelID, unsigned char>> connectionToBlock{};
             unsigned char currentTrack = std::numeric_limits<unsigned char>::max();
 
-            useChannel(sourceChannel, p_net, channelInformation, connectionToSink, usedChannels, currentTrack);
+            useChannel(sourceChannel, p_net, channelInformation, connectionToBlock, usedChannels, currentTrack);
 
             // can be an adjacent block or the sourceBlock itself, if the net uses its output as input
             std::set<std::string> associatedBlockNames = it->second;
 
             for (std::string associatedBlockName : associatedBlockNames)
             {
-                updateBlocksAndRelevantChannels(sourceChannel, associatedBlockName, relevantChannels, doublyRelevantChannels, blocks);
+                updateBlockAndRelevantChannels(sourceChannel, blocks.find(associatedBlockName)->second, relevantChannels, doublyRelevantChannels, blocks);
 
                 numberOfPinsReached++;
-                p_net->setConnection(associatedBlockName, connectionToSink);
+                p_net->setConnection(associatedBlockName, connectionToBlock);
             }
 
             relevantChannels.erase(it);
             doublyRelevantChannels.erase(sourceChannel);
         }
 
-        while (numberOfPinsReached < p_net->getSinkBlockCount())
+        while (numberOfPinsReached < p_net->getConnectedBlockCount())
         {
             std::set<std::string> reachedBlocks{};
             unsigned char indexOfSink{};
-            channelID sink = findSink(channelToIndex, indexToChannels, arraySize, indexOfSink, channelwidth, channelInformation, relevantChannels, doublyRelevantChannels,
-                                      numberOfPinsReached, reachedBlocks, blocks);
+            channelID sink = findPin(channelToIndex, indexToChannels, arraySize, indexOfSink, channelWidth, channelInformation, relevantChannels, doublyRelevantChannels,
+                                     numberOfPinsReached, reachedBlocks, blocks);
             if (!sink.isInitialized())
                 return false;
 
-            std::vector<std::pair<channelID, unsigned char>> connectionToSink = retrace(channelToIndex, indexToChannels, p_net, sink, indexOfSink, channelInformation);
+            std::vector<std::pair<channelID, unsigned char>> connectionToBlock = retrace(channelToIndex, indexToChannels, p_net, sink, indexOfSink, channelInformation);
 
             assert(reachedBlocks.size() != 0);
             for (std::string blockName : reachedBlocks)
-            {
-                // printLogMessage("reached block '" + blockName + "'\n");
-                //  1-2 blocks
-                p_net->setConnection(blockName, connectionToSink);
-            }
+                p_net->setConnection(blockName, connectionToBlock);
         }
-        // printLogMessage("------------------------------ net routed!\n");
 
         assert(p_net->allPinsConnected());
     }
