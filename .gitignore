@@ -51,6 +51,8 @@ _deps
 # my test files
 test files
 *.log
+*.net
+*.place
 
 #tests (for now, until they actually work)
 test

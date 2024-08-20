@@ -187,13 +187,11 @@ channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, u
         unsigned char lowestAmount = std::numeric_limits<unsigned char>::max();
         channelID chosenChannel{};
 
-        //std::string loggingMessage = "candidates: ";
         for (channelID neighbour : neighbours)
         {
             if (validChannels.contains(neighbour))
             {
                 assert(channelInformation.contains(neighbour));
-                //loggingMessage += channelIDToString(neighbour) + ' ';
                 unsigned char used = channelInformation.find(neighbour)->second.getUsedTracks();
                 if (used < lowestAmount)
                 {
@@ -202,7 +200,6 @@ channelID channelID::chooseNeighbour(std::set<channelID> const &validChannels, u
                 }
             }
         }
-        //printLogMessage(loggingMessage);
 
         assert(chosenChannel.isInitialized());
         return chosenChannel;
