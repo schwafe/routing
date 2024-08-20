@@ -14,7 +14,7 @@ class net
     std::string name{};
     channelID sourceChannel{};
     std::string sourceBlockName{};
-    std::set<std::string> sinkBlockNames{};
+    std::set<std::string> namesOfConnectedBlocks{};
     std::multimap<channelID, unsigned char> usedTracks{};
     std::vector<std::pair<std::string, std::vector<std::pair<channelID, unsigned char>>>> connectionsByRoutingOrder{};
 
@@ -23,10 +23,10 @@ public:
     net(const net &other);
 
     std::string getName() const;
-    unsigned short getSinkBlockCount() const;
+    unsigned short getConnectedBlockCount() const;
     channelID getSourceChannel() const;
     std::string getSourceBlockName() const;
-    std::set<std::string> getSinkBlockNames() const;
+    std::set<std::string> getNamesOfConnectedBlocks() const;
     std::vector<std::pair<std::string, std::vector<std::pair<channelID, unsigned char>>>> getConnectionsByRoutingOrder() const;
 
     bool usedChannel(const channelID &channel) const;
@@ -35,9 +35,9 @@ public:
 
     void setSourceChannel(channelID sourceChannel);
     void setSourceBlockName(std::string sourceBlockName);
-    void addSinkBlock(std::string sinkBlockName);
+    void addConnectedBlock(std::string connectedBlockName);
     void setUsedTrack(channelID channel, unsigned char track);
-    void setConnection(std::string sinkBlockName, std::vector<std::pair<channelID, unsigned char>> connectionToSink);
+    void setConnection(std::string connectedBlockName, std::vector<std::pair<channelID, unsigned char>> connectionToBlock);
 };
 
 #endif

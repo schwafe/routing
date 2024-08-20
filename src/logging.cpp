@@ -21,8 +21,8 @@ std::string argsToString(int argc, char *argv[])
 std::string listConnectedBlocks(std::shared_ptr<net> const &p_net)
 {
     std::string list{};
-    for (std::string sinkBlockName : p_net->getSinkBlockNames())
-        list.append(sinkBlockName).append(", ");
+    for (std::string connectedBlockName : p_net->getNamesOfConnectedBlocks())
+        list.append(connectedBlockName).append(", ");
     return list.substr(0, list.size() - 2);
 }
 
@@ -38,13 +38,13 @@ void printIndices(std::map<channelID, unsigned char> const &indices)
 
 void printConnections(std::shared_ptr<net> const &p_net)
 {
-    std::cout << "net sourceBlockName: '" << p_net->getSourceBlockName() << "' size: " << p_net->getSinkBlockCount() << '\n';
+    std::cout << "net sourceBlockName: '" << p_net->getSourceBlockName() << "' size: " << p_net->getConnectedBlockCount() << '\n';
     for (auto &entry : p_net->getConnectionsByRoutingOrder())
     {
         std::vector<std::pair<channelID, unsigned char>> connection{entry.second};
         assert(!connection.empty());
 
-        std::cout << "\tsinkBlockName: '" << entry.first << "'" << '\n';
+        std::cout << "\tconnectedBlockName: '" << entry.first << "'" << '\n';
         for (std::pair<channelID, unsigned char> connectionPair : connection)
             std::cout << "\t\t" << channelIDToString(connectionPair.first) << " - " << +connectionPair.second << '\n';
     }

@@ -29,11 +29,11 @@ bool readNet(std::string const &fileName, std::map<std::string, std::shared_ptr<
                 if (matches[index] != "open")
                 {
                     if (auto it = netsByNameOfTheNet.find(matches[index]); it != netsByNameOfTheNet.end())
-                        it->second->addSinkBlock(blockName);
+                        it->second->addConnectedBlock(blockName);
                     else
                     {
                         std::shared_ptr<net> p_net = std::make_shared<net>(matches[index]);
-                        p_net->addSinkBlock(blockName);
+                        p_net->addConnectedBlock(blockName);
                         netsByNameOfTheNet.insert(std::make_pair(matches[index], p_net));
                     }
                 }
@@ -55,11 +55,11 @@ bool readNet(std::string const &fileName, std::map<std::string, std::shared_ptr<
                 netsConnectedToClock.insert(blockName);
 
                 if (auto it = netsByNameOfTheNet.find(matches[6]); it != netsByNameOfTheNet.end())
-                    it->second->addSinkBlock(blockName);
+                    it->second->addConnectedBlock(blockName);
                 else
                 {
                     std::shared_ptr<net> p_net = std::make_shared<net>(matches[6]);
-                    p_net->addSinkBlock(blockName);
+                    p_net->addConnectedBlock(blockName);
                     netsByNameOfTheNet.insert(std::make_pair(matches[6], p_net));
                 }
             }
@@ -88,11 +88,11 @@ bool readNet(std::string const &fileName, std::map<std::string, std::shared_ptr<
             std::regex_match(line, matches, constants::padPinPattern);
 
             if (auto it = netsByNameOfTheNet.find(matches[1]); it != netsByNameOfTheNet.end())
-                it->second->addSinkBlock(blockName);
+                it->second->addConnectedBlock(blockName);
             else
             {
                 std::shared_ptr<net> p_net = std::make_shared<net>(matches[1]);
-                p_net->addSinkBlock(blockName);
+                p_net->addConnectedBlock(blockName);
                 netsByNameOfTheNet.insert(std::make_pair(matches[1], p_net));
             }
 
@@ -277,11 +277,11 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
             routingFile << +constants::irrelevantPinClass;
         routingFile << ".\n";
 
-        for (std::string sinkBlockName : p_net->getSinkBlockNames())
+        for (std::string connectedBlockName : p_net->getNamesOfConnectedBlocks())
         {
-            assert(blocks.contains(sinkBlockName));
-            std::shared_ptr<block> p_block = blocks.find(sinkBlockName)->second;
-            routingFile << "Block " << sinkBlockName << " at (" << +p_block->getX() << ", " << +p_block->getY() << "), Pin class ";
+            assert(blocks.contains(connectedBlockName));
+            std::shared_ptr<block> p_block = blocks.find(connectedBlockName)->second;
+            routingFile << "Block " << connectedBlockName << " at (" << +p_block->getX() << ", " << +p_block->getY() << "), Pin class ";
             if (p_block->getType() == constants::blockTypeCLB)
                 routingFile << +constants::clockPinClass;
             else

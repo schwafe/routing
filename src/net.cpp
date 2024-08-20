@@ -12,7 +12,7 @@ net::net(const net &other)
     name = other.name;
     sourceBlockName = other.sourceBlockName;
     sourceChannel = other.sourceChannel;
-    sinkBlockNames = other.sinkBlockNames;
+    namesOfConnectedBlocks = other.namesOfConnectedBlocks;
 }
 
 std::string net::getName() const
@@ -30,9 +30,9 @@ std::string net::getSourceBlockName() const
     return sourceBlockName;
 }
 
-unsigned short net::getSinkBlockCount() const
+unsigned short net::getConnectedBlockCount() const
 {
-    return sinkBlockNames.size();
+    return namesOfConnectedBlocks.size();
 }
 
 bool net::usedChannel(const channelID &channel) const
@@ -40,9 +40,9 @@ bool net::usedChannel(const channelID &channel) const
     return usedTracks.contains(channel);
 }
 
-std::set<std::string> net::getSinkBlockNames() const
+std::set<std::string> net::getNamesOfConnectedBlocks() const
 {
-    return sinkBlockNames;
+    return namesOfConnectedBlocks;
 }
 
 std::vector<std::pair<std::string, std::vector<std::pair<channelID, unsigned char>>>> net::getConnectionsByRoutingOrder() const
@@ -66,7 +66,7 @@ unsigned char net::chooseUsedTrack(const channelID &channel, unsigned char optim
 
 bool net::allPinsConnected() const
 {
-    return sinkBlockNames.size() == connectionsByRoutingOrder.size();
+    return namesOfConnectedBlocks.size() == connectionsByRoutingOrder.size();
 }
 
 void net::setSourceChannel(channelID sourceChannel)
@@ -79,10 +79,10 @@ void net::setSourceBlockName(std::string sourceBlockName)
     net::sourceBlockName = sourceBlockName;
 }
 
-void net::addSinkBlock(std::string sinkBlockName)
+void net::addConnectedBlock(std::string connectedBlockName)
 {
-    assert(!sinkBlockNames.contains(sinkBlockName));
-    sinkBlockNames.emplace(sinkBlockName);
+    assert(!namesOfConnectedBlocks.contains(connectedBlockName));
+    namesOfConnectedBlocks.emplace(connectedBlockName);
 }
 
 void net::setUsedTrack(channelID channel, unsigned char track)
@@ -90,8 +90,8 @@ void net::setUsedTrack(channelID channel, unsigned char track)
     usedTracks.emplace(channel, track);
 }
 
-void net::setConnection(std::string sinkBlockName, std::vector<std::pair<channelID, unsigned char>> connectionToSink)
+void net::setConnection(std::string connectedBlockName, std::vector<std::pair<channelID, unsigned char>> connectionToBlock)
 {
-    assert(sinkBlockNames.contains(sinkBlockName));
-    connectionsByRoutingOrder.emplace_back(sinkBlockName, connectionToSink);
+    assert(namesOfConnectedBlocks.contains(connectedBlockName));
+    connectionsByRoutingOrder.emplace_back(connectedBlockName, connectionToBlock);
 }
