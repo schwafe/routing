@@ -41,53 +41,122 @@ void registerIndex(channelID channel, unsigned char index, std::map<channelID, u
     indexToChannels.find(index)->second.emplace(channel);
 }
 
-/* TODO split up? */
-void updateBlockAndRelevantChannels(channelID const &channel, std::shared_ptr<block> const &p_block, std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels, auto const &blocks)
+void chooseChannelWithPin(channelID const &chosenChannel, unsigned char indexOfChosenChannel, std::map<channelID, std::set<std::string>> &relevantChannels,
+                          std::set<channelID> &doublyRelevantChannels, std::set<std::string> &reachedBlocks, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
-    p_block->setChannelTaken(channel);
-
-    for (channelID channel : p_block->getOpenChannels())
+    for (std::string associatedBlockName : relevantChannels.find(chosenChannel)->second)
     {
-        assert(relevantChannels.contains(channel));
-        std::set<std::string> &associatedBlocks = relevantChannels.find(channel)->second;
-        associatedBlocks.erase(blockName);
-        if (!associatedBlocks.empty())
+        reachedBlocks.insert(associatedBlockName);
+        std::shared_ptr<block> p_block = blocks.find(associatedBlockName)->second;
+        p_block->setChannelTaken(chosenChannel);
+
+        for (channelID channel : p_block->getOpenChannels())
         {
-            assert(doublyRelevantChannels.contains(channel));
-            doublyRelevantChannels.erase(channel);
+            assert(relevantChannels.contains(channel));
+            std::set<std::string> &associatedBlocks = relevantChannels.find(channel)->second;
+            associatedBlocks.erase(associatedBlockName);
+            if (!associatedBlocks.empty())
+            {
+                assert(doublyRelevantChannels.contains(channel));
+                doublyRelevantChannels.erase(channel);
+            }
+            else
+                relevantChannels.erase(channel);
         }
-        else
-            relevantChannels.erase(channel);
     }
+
+    relevantChannels.erase(chosenChannel);
+    doublyRelevantChannels.erase(chosenChannel);
 }
 
-/* Finds a pin by searching neighbouring channels of the channels in indexToChannels at index zero. Updates indexToChannels and channelToIndex to find relevant channels faster in the next
-iteration. RelevantChannels and doublyRelevantChannels indicate which channels contain pins and are updated before returning the chosen channel.
+/* @return true, if the channel was chosen, false otherwise */
+bool processChannelWithIndex(channelID channel, unsigned char indexOfChannel, unsigned char expectedIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels,
+                             unsigned char &indexOfChosenChannel, std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels,
+                             std::set<std::string> &reachedBlocks, bool &relevantChannelFound, channelID &firstRelevantChannel, unsigned char &indexOfFirstRelevantChannel,
+                             std::map<std::string, std::shared_ptr<block>> const &blocks)
+{
+    if (indexOfChannel > expectedIndex)
+    {
+        indexOfChannel = expectedIndex;
 
-Starts with one or more channels, that are already part of the net.
-Searches the neighbouring channels of the channels, that are have already been searched (or in the first round the channels, that are part of the net).
+        auto result = indexToChannels.find(expectedIndex);
+        if (result == indexToChannels.end())
+            result = indexToChannels.emplace(expectedIndex, std::set<channelID>{}).first;
+        result->second.emplace(channel);
+    }
+
+    if (!relevantChannelFound && relevantChannels.contains(channel))
+    {
+        if (doublyRelevantChannels.empty())
+        {
+            assert(relevantChannels.find(channel)->second.size() == 1);
+            chooseChannelWithPin(channel, expectedIndex, relevantChannels, doublyRelevantChannels, reachedBlocks, blocks);
+            indexOfChosenChannel = expectedIndex;
+            return true;
+        }
+        else
+        {
+            assert(relevantChannels.find(channel)->second.size() == 1);
+            firstRelevantChannel = channel;
+            indexOfFirstRelevantChannel = expectedIndex;
+            relevantChannelFound = true;
+        }
+    }
+    return false;
+}
+
+/* @return true, if the channel was chosen, false otherwise */
+bool processChannelWithoutIndex(channelID channel, unsigned char indexOfChannel, std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels,
+                                unsigned char &indexOfChosenChannel, std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels,
+                                std::set<std::string> &reachedBlocks, bool &relevantChannelFound, channelID &firstRelevantChannel, unsigned char &indexOfFirstRelevantChannel,
+                                std::map<std::string, std::shared_ptr<block>> const &blocks)
+{
+    registerIndex(channel, indexOfChannel, channelToIndex, indexToChannels);
+
+    if ((doublyRelevantChannels.empty() && relevantChannels.contains(channel)) || doublyRelevantChannels.contains(channel))
+    {
+        chooseChannelWithPin(channel, indexOfChannel, relevantChannels, doublyRelevantChannels, reachedBlocks, blocks);
+        indexOfChosenChannel = indexOfChannel;
+        return true;
+    }
+    else if (relevantChannels.contains(channel))
+    {
+        assert(relevantChannels.find(channel)->second.size() == 1);
+        firstRelevantChannel = channel;
+        indexOfFirstRelevantChannel = indexOfChannel;
+        relevantChannelFound = true;
+    }
+    return false;
+}
+
+/* Finds a pin by searching neighbouring channels of the channels, that are already part of the net. In the first iteration, these are the channels with an index of zero. Updates
+indexToChannels and channelToIndex to find relevant channels faster during the next call of the function. RelevantChannels and doublyRelevantChannels indicate which channels contain pins
+and before returning the chosen channel, the channel is removed from both.
+
 If a channel, that contains a pin, that needs to be connected to the net, ('relevant channel') is found, this is noted. If channels exist, that contain two pins, that need to be connected,
-('doubly relevant channel') the search continues for two iterations or until such a channel is found. If no doubly relevant channel is found, the first relevant channel, that was found, is
-returned. If no doubly relevant channel exists, the search stops as soon as any relevant channel is found.
+('doubly relevant channel') the search continues for constants::additionalIterationsForDoublyRelevantChannels iterations or until such a channel is found. If no doubly relevant channel is
+found, the first relevant channel, that was found, is returned. If no doubly relevant channel exists, the search stops as soon as any relevant channel is found.
     @return if the search is successful: the chosen channel, that contains or two pins, that need to be connected to the net - if not: a channel created with the default constructor
 */
-channelID findPin(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, unsigned char arraySize, unsigned char &indexOfSink,
-                  unsigned char channelWidth, auto const &channelInformation, auto &relevantChannels, std::set<channelID> &doublyRelevantChannels,
-                  unsigned short &numberOfPinsReached, std::set<std::string> &reachedBlocks, std::map<std::string, std::shared_ptr<block>> const &blocks)
+channelID findPin(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, unsigned char arraySize, unsigned char &indexOfChosenChannel,
+                  unsigned char channelWidth, auto const &channelInformation, std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels,
+                  std::set<std::string> &reachedBlocks, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
-    std::set<channelID> processedChannels{};
     unsigned char currentIndex = constants::indexZero;
+    std::set<channelID> fullyProcessedChannels{};
+    bool relevantChannelFound{};
+    channelID firstRelevantChannel;
+    unsigned char indexOfFirstRelevantChannel{};
+
     assert(indexToChannels.contains(constants::indexZero));
 
-    bool relevantChannelFound{};
-    std::pair<channelID, unsigned char> firstRelevantChannelFoundWithIndex{channelID{}, std::numeric_limits<unsigned char>::max()};
-    do
+    while (indexToChannels.contains(currentIndex) && (!relevantChannelFound || (!doublyRelevantChannels.empty() && currentIndex < indexOfFirstRelevantChannel + constants::additionalIterationsForDoublyRelevantChannels)))
     {
-        unsigned char expectedIndex = currentIndex + 1;
+        std::set<channelID> channelsOfCurrentIndex = indexToChannels.find(currentIndex)->second;
 
-        for (channelID channel : indexToChannels.find(currentIndex)->second)
+        for (channelID channel : channelsOfCurrentIndex)
         {
-            if (processedChannels.contains(channel))
+            if (fullyProcessedChannels.contains(channel))
                 continue;
 
             for (channelID neighbour : channel.getNeighbours(arraySize))
@@ -95,72 +164,30 @@ channelID findPin(std::map<channelID, unsigned char> &channelToIndex, std::map<u
                 if (auto it = channelToIndex.find(neighbour); it != channelToIndex.end())
                 {
                     assert(it->second >= currentIndex - 1);
-                    if (it->second > expectedIndex)
-                    {
-                        it->second = expectedIndex;
-
-                        auto result = indexToChannels.find(expectedIndex);
-                        if (result == indexToChannels.end())
-                            result = indexToChannels.emplace(expectedIndex, std::set<channelID>{}).first;
-                        result->second.emplace(neighbour);
-                    }
-
-                    if (!relevantChannelFound && relevantChannels.contains(neighbour))
-                    {
-                        assert(relevantChannels.find(neighbour)->second.size() == 1);
-                        firstRelevantChannelFoundWithIndex = std::make_pair(neighbour, expectedIndex);
-                        relevantChannelFound = true;
-                    }
-                }
-                else if (isChannelFull(neighbour, channelInformation, channelWidth))
-                {
-                    registerIndex(channelToIndex, indexToChannels, neighbour, expectedIndex);
-
-                    if (auto it = doublyRelevantChannels.find(neighbour); it != doublyRelevantChannels.end())
-                    {
-                        assert(relevantChannels.find(neighbour)->second.size() == 2);
-                        for (std::string associatedBlockName : relevantChannels.find(neighbour)->second)
-                        {
-                            reachedBlocks.insert(associatedBlockName);
-                            updateBlockAndRelevantChannels(neighbour, blocks.find(associatedBlockName)->second, relevantChannels, doublyRelevantChannels, blocks);
-                        }
-
-                        relevantChannels.erase(neighbour);
-                        doublyRelevantChannels.erase(it);
-
-                        numberOfPinsReached += 2;
-                        indexOfSink = expectedIndex;
+                    bool chosen = processChannelWithIndex(neighbour, it->second, currentIndex + 1, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels, reachedBlocks,
+                                                          relevantChannelFound, firstRelevantChannel, indexOfFirstRelevantChannel, blocks);
+                    if (chosen)
                         return neighbour;
-                    }
-                    else if (relevantChannels.contains(neighbour))
-                    {
-                        assert(relevantChannels.find(neighbour)->second.size() == 1);
-                        firstRelevantChannelFoundWithIndex = std::make_pair(neighbour, expectedIndex);
-                        relevantChannelFound = true;
-                    }
+                }
+                else if (!isChannelFull(neighbour, channelInformation, channelWidth))
+                {
+                    bool chosen = processChannelWithoutIndex(neighbour, currentIndex + 1, channelToIndex, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels,
+                                                             reachedBlocks, relevantChannelFound, firstRelevantChannel, indexOfFirstRelevantChannel, blocks);
+                    if (chosen)
+                        return neighbour;
                 }
             }
-
-            processedChannels.emplace(channel);
+            fullyProcessedChannels.emplace(channel);
         }
-    } while (indexToChannels.contains(++currentIndex) && (!relevantChannelFound || (!doublyRelevantChannels.empty() && firstRelevantChannelFoundWithIndex.second >= currentIndex - 2)));
+        currentIndex++;
+    }
 
     if (relevantChannelFound)
     {
-        channelID relevantChannel = firstRelevantChannelFoundWithIndex.first;
-
-        assert(relevantChannels.find(relevantChannel)->second.size() == 1);
-        for (std::string associatedBlockName : relevantChannels.find(relevantChannel)->second)
-        {
-            reachedBlocks.insert(associatedBlockName);
-            updateBlockAndRelevantChannels(relevantChannel, blocks.find(associatedBlockName)->second, relevantChannels, doublyRelevantChannels, blocks);
-        }
-
-        relevantChannels.erase(relevantChannel);
-
-        numberOfPinsReached++;
-        indexOfSink = firstRelevantChannelFoundWithIndex.second;
-        return relevantChannel;
+        assert(relevantChannels.find(firstRelevantChannel)->second.size() == 1);
+        chooseChannelWithPin(firstRelevantChannel, indexOfFirstRelevantChannel, relevantChannels, doublyRelevantChannels, reachedBlocks, blocks);
+        indexOfChosenChannel = indexOfFirstRelevantChannel;
+        return firstRelevantChannel;
     }
     else
         return channelID{};
@@ -181,19 +208,19 @@ void useChannel(channelID channel, std::shared_ptr<net> const &p_net, std::map<c
     usedChannels.insert(channel);
 }
 
-std::vector<std::pair<channelID, unsigned char>> retrace(auto &channelToIndex, auto &indexToChannels, std::shared_ptr<net> const &p_net, channelID sink, unsigned char indexOfSink,
+std::vector<std::pair<channelID, unsigned char>> retrace(auto &channelToIndex, auto &indexToChannels, std::shared_ptr<net> const &p_net, channelID channelWithPin, unsigned char indexOfChannelWithPin,
                                                          std::map<channelID, channelInfo> &channelInformation)
 {
-    assert(sink.isInitialized());
+    assert(channelWithPin.isInitialized());
 
     std::set<channelID> usedChannels{};
     std::vector<std::pair<channelID, unsigned char>> connectionToBlock{};
     unsigned char currentTrack = std::numeric_limits<unsigned char>::max();
 
-    useChannel(sink, p_net, channelInformation, connectionToBlock, usedChannels, currentTrack);
+    useChannel(channelWithPin, p_net, channelInformation, connectionToBlock, usedChannels, currentTrack);
 
-    channelID currentChannel = sink;
-    unsigned char expectedIndex = indexOfSink;
+    channelID currentChannel = channelWithPin;
+    unsigned char expectedIndex = indexOfChannelWithPin;
 
     do
     {
@@ -213,19 +240,20 @@ std::vector<std::pair<channelID, unsigned char>> retrace(auto &channelToIndex, a
     return connectionToBlock;
 }
 
-/* @return false if a net could not be routed with the given channelWidth, true if all nets were routed successfully
- */
-bool routeNets(unsigned char arraySize, unsigned char channelWidth, std::vector<std::shared_ptr<net>> const &sortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks)
+/* @return The amount of nets, that were processed successfully. */
+unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, std::vector<std::shared_ptr<net>> const &sortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     std::map<channelID, channelInfo> channelInformation = generateChannelInformation(arraySize);
 
-    for (std::shared_ptr<net> const &p_net : sortedNets)
+    for (unsigned short index = 0; index < sortedNets.size(); index++)
     {
+        std::shared_ptr<net> p_net = sortedNets[index];
+
         channelID sourceChannel = p_net->getSourceChannel();
         if (isChannelFull(sourceChannel, channelInformation, channelWidth))
         {
             printLogMessage("Routing failed due to the source channel of block '" + p_net->getSourceBlockName() + "' being full.");
-            return false;
+            return index;
         }
 
         /* stores channels, that contain input pins of two blocks, that are to be connected to the net*/
@@ -241,9 +269,11 @@ bool routeNets(unsigned char arraySize, unsigned char channelWidth, std::vector<
 
         registerIndex(sourceChannel, constants::indexZero, channelToIndex, indexToChannels);
 
-        auto it = relevantChannels.find(sourceChannel);
-        if (it != relevantChannels.end())
+        if (relevantChannels.contains(sourceChannel))
         {
+            std::set<std::string> reachedBlocks{};
+            chooseChannelWithPin(sourceChannel, constants::indexZero, relevantChannels, doublyRelevantChannels, reachedBlocks, blocks);
+
             std::set<channelID> usedChannels{};
             std::vector<std::pair<channelID, unsigned char>> connectionToBlock{};
             unsigned char currentTrack = std::numeric_limits<unsigned char>::max();
@@ -251,32 +281,24 @@ bool routeNets(unsigned char arraySize, unsigned char channelWidth, std::vector<
             useChannel(sourceChannel, p_net, channelInformation, connectionToBlock, usedChannels, currentTrack);
 
             // can be an adjacent block or the sourceBlock itself, if the net uses its output as input
-            std::set<std::string> associatedBlockNames = it->second;
-
-            for (std::string associatedBlockName : associatedBlockNames)
-            {
-                updateBlockAndRelevantChannels(sourceChannel, blocks.find(associatedBlockName)->second, relevantChannels, doublyRelevantChannels, blocks);
-
-                numberOfPinsReached++;
-                p_net->setConnection(associatedBlockName, connectionToBlock);
-            }
-
-            relevantChannels.erase(it);
-            doublyRelevantChannels.erase(sourceChannel);
+            numberOfPinsReached += reachedBlocks.size();
+            for (std::string reachedBlock : reachedBlocks)
+                p_net->setConnection(reachedBlock, connectionToBlock);
         }
 
         while (numberOfPinsReached < p_net->getConnectedBlockCount())
         {
             std::set<std::string> reachedBlocks{};
-            unsigned char indexOfSink{};
-            channelID sink = findPin(channelToIndex, indexToChannels, arraySize, indexOfSink, channelWidth, channelInformation, relevantChannels, doublyRelevantChannels,
-                                     numberOfPinsReached, reachedBlocks, blocks);
-            if (!sink.isInitialized())
-                return false;
+            unsigned char indexOfChannelWithPin{};
+            channelID channelWithPin = findPin(channelToIndex, indexToChannels, arraySize, indexOfChannelWithPin, channelWidth, channelInformation, relevantChannels, doublyRelevantChannels,
+                                               reachedBlocks, blocks);
+            if (!channelWithPin.isInitialized())
+                return index;
 
-            std::vector<std::pair<channelID, unsigned char>> connectionToBlock = retrace(channelToIndex, indexToChannels, p_net, sink, indexOfSink, channelInformation);
+            std::vector<std::pair<channelID, unsigned char>> connectionToBlock = retrace(channelToIndex, indexToChannels, p_net, channelWithPin, indexOfChannelWithPin, channelInformation);
 
             assert(reachedBlocks.size() != 0);
+            numberOfPinsReached += reachedBlocks.size();
             for (std::string blockName : reachedBlocks)
                 p_net->setConnection(blockName, connectionToBlock);
         }
@@ -284,5 +306,5 @@ bool routeNets(unsigned char arraySize, unsigned char channelWidth, std::vector<
         assert(p_net->allPinsConnected());
     }
 
-    return true;
+    return sortedNets.size();
 }

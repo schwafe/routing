@@ -48,6 +48,7 @@ namespace constants
     const unsigned char outputPinNumber = 4;
 
     const unsigned char indexZero = 0;
+    const unsigned char additionalIterationsForDoublyRelevantChannels = 1;
 }
 
 #endif

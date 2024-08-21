@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
     std::map<std::string, std::shared_ptr<block>> blocks{};
     std::set<std::shared_ptr<net>> globalNets{};
 
-    unsigned char channelwidth = constants::startingValueChannelWidth;
+    unsigned char channelWidth = constants::startingValueChannelWidth;
     std::vector<std::shared_ptr<net>> sortedNets = readNetsAndBlocks(netFileName, placeFileName, arraySize, blocks, globalNets);
 
     std::string logMessage = "The .net and .place files have been successfully read!\nThe arraySize is " + std::to_string(+arraySize) + ".\n" + std::to_string(sortedNets.size() + globalNets.size()) + " nets ";
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
     logMessage += "and " + std::to_string(blocks.size()) + " blocks have been read.\n";
     printLogMessage(logMessage);
 
-    bool success{};
+    unsigned short netsRouted{};
     unsigned char successfulWidth = std::numeric_limits<unsigned char>::max();
     unsigned char failedWidth = 0;
     std::vector<std::shared_ptr<net>> tempSortedNets{}, finalSortedNets{};
@@ -140,35 +140,46 @@ int main(int argc, char *argv[])
 
     do
     {
-        printLogMessage("\n----------------\nRouting nets with a channelwidth of " + std::to_string(+channelwidth) + " tracks!");
+        printLogMessage("\n----------------\nRouting nets with a channelWidth of " + std::to_string(+channelWidth) + " tracks!");
         deepCopy(sortedNets, tempSortedNets, blocks, tempBlocks);
-        success = routeNets(arraySize, channelwidth, tempSortedNets, tempBlocks);
+        netsRouted = routeNets(arraySize, channelWidth, tempSortedNets, tempBlocks);
 
-        if (success)
+        if (netsRouted == sortedNets.size())
         {
-            successfulWidth = channelwidth;
+            successfulWidth = channelWidth;
             finalSortedNets = tempSortedNets;
             finalBlocks = tempBlocks;
-            printLogMessage("Routing succeeded with a channelwidth of " + std::to_string(+successfulWidth) + " tracks!");
-            channelwidth = channelwidth / 2;
-            if (channelwidth <= failedWidth)
-                channelwidth = failedWidth + 1;
-            assert(channelwidth > 0);
+            printLogMessage("Routing succeeded with a channelWidth of " + std::to_string(+successfulWidth) + " tracks!");
+            channelWidth = channelWidth / 2;
+            if (channelWidth <= failedWidth)
+                channelWidth = failedWidth + 1;
+            assert(channelWidth > 0);
         }
         else
         {
-            assert(channelwidth > failedWidth);
-            failedWidth = channelwidth;
-            printLogMessage("Routing failed with a channelwidth of " + std::to_string(+failedWidth) + " tracks!");
-            if (successfulWidth == channelwidth + 2)
-                channelwidth += 1;
+            assert(channelWidth > failedWidth);
+            failedWidth = channelWidth;
+            printLogMessage("Routing failed with a channelWidth of " + std::to_string(+failedWidth) + " tracks!");
+
+            if (netsRouted * 2 < sortedNets.size())
+            {
+                if (channelWidth + 4 < successfulWidth)
+                    channelWidth += 4;
+                else
+                    channelWidth = successfulWidth - 1;
+            }
             else
-                channelwidth += 2;
+            {
+                if (channelWidth + 2 < successfulWidth)
+                    channelWidth += 2;
+                else
+                    channelWidth = successfulWidth - 1;
+            }
         }
 
-        assert(channelwidth <= constants::maximumChannelWidth + 1);
-    } while (channelwidth < successfulWidth);
-    printLogMessage("Using the result from the successful run with a channelwidth of " + std::to_string(+successfulWidth) + " tracks!");
+        assert(channelWidth <= constants::maximumChannelWidth + 1);
+    } while (failedWidth < successfulWidth - 1);
+    printLogMessage("Using the result from the successful run with a channelWidth of " + std::to_string(+successfulWidth) + " tracks!");
 
     printLogMessage("Writing routing file!");
     writeRouting(routeFileName, arraySize, finalSortedNets, globalNets, finalBlocks);
