@@ -3,6 +3,7 @@
 
 #include <regex>
 #include <string>
+#include "channelID.hpp"
 
 namespace constants
 {
@@ -49,6 +50,8 @@ namespace constants
 
     const unsigned char indexZero = 0;
     const unsigned char additionalIterationsForDoublyRelevantChannels = 1;
+
+    const channelID uninitializedChannel = channelID{};
 }
 
 #endif

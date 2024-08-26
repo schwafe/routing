@@ -1,5 +1,5 @@
-#ifndef BLOCK_HPP
-#define BLOCK_HPP
+#ifndef BLOCK_H
+#define BLOCK_H
 
 #include <set>
 #include <limits>

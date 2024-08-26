@@ -1,3 +1,6 @@
+#ifndef IO_H
+#define IO_H
+
 #include <string>
 #include <map>
 #include <memory>
@@ -12,3 +15,5 @@ bool readPlace(std::string const &fileName, unsigned char &arraySize, std::map<s
 
 void writeRouting(std::string const &fileName, unsigned char arraySize, std::vector<std::shared_ptr<net>> const &sortedNets, std::set<std::shared_ptr<net>> const &globalNets,
                   std::map<std::string, std::shared_ptr<block>> const &blocks);
+
+#endif
