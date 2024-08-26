@@ -251,20 +251,17 @@ std::vector<std::pair<channelID, unsigned char>> retrace(auto &channelToIndex, a
 }
 
 /* @return The amount of nets, that were processed successfully. */
-unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, std::vector<std::shared_ptr<net>> const &sortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks)
+unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, std::vector<std::shared_ptr<net>> const &nets, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     std::map<channelID, channelInfo> channelInformation = generateChannelInformation(arraySize);
 
-    for (unsigned short index = 0; index < sortedNets.size(); index++)
+    for (unsigned short index = 0; index < nets.size(); index++)
     {
-        std::shared_ptr<net> p_net = sortedNets[index];
+        std::shared_ptr<net> p_net = nets[index];
 
         channelID sourceChannel = p_net->getSourceChannel();
         if (isChannelFull(sourceChannel, channelInformation, channelWidth))
-        {
-            printLogMessage("Routing failed due to the source channel of block '" + p_net->getSourceBlockName() + "' being full.");
             return index;
-        }
 
         /* stores channels, that contain input pins of two blocks, that are to be connected to the net*/
         std::set<channelID> doublyRelevantChannels{};
@@ -316,5 +313,5 @@ unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, st
         assert(p_net->allPinsConnected());
     }
 
-    return sortedNets.size();
+    return nets.size();
 }

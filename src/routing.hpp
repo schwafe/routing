@@ -8,6 +8,6 @@
 #include "net.hpp"
 #include "block.hpp"
 
-unsigned short routeNets(unsigned char arraySize, unsigned char channelwidth, std::vector<std::shared_ptr<net>> const &sortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks);
+unsigned short routeNets(unsigned char arraySize, unsigned char channelwidth, std::vector<std::shared_ptr<net>> const &nets, std::map<std::string, std::shared_ptr<block>> const &blocks);
 
 #endif

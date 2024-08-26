@@ -18,6 +18,8 @@ namespace constants
 
     const unsigned char startingValueChannelWidth = 12;
     const unsigned char maximumChannelWidth = 24;
+    const unsigned char additionalIterationsForDoublyRelevantChannels = 1;
+    const unsigned char triesPerChannelWidth = 3;
 
     const std::regex globalPattern("^\\.global (\\S+)\\s*.*");
     const std::regex inputPattern("^\\.input (\\S+)\\s*.*");
@@ -49,8 +51,6 @@ namespace constants
     const unsigned char outputPinNumber = 4;
 
     const unsigned char indexZero = 0;
-    const unsigned char additionalIterationsForDoublyRelevantChannels = 1;
-
     const channelID uninitializedChannel = channelID{};
 }
 
