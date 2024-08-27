@@ -7,14 +7,12 @@
 
 namespace constants
 {
-    const std::string netSuffix = ".net";
-    const std::string placeSuffix = ".place";
-    const std::string routeSuffix = ".route";
-
-    const unsigned char success = 0;
+        const unsigned char success = 0;
     const unsigned char wrongArguments = 1;
     const unsigned char invalidNetFile = 2;
     const unsigned char invalidPlaceFile = 3;
+
+    const std::string correctArgumentsMessage = "Please enter either three or four arguments: the filenames of the .net and .place files to be read and the filename of the .route file to be written and optionally a channel width to try the routing for.";
 
     const unsigned char startingValueChannelWidth = 12;
     const unsigned char maximumChannelWidth = 24;
@@ -32,6 +30,8 @@ namespace constants
     const std::regex arraySizePattern("(\\d{1,2}) x \\d{1,2}");
     const std::regex commentPattern("^\\s*#.*");
     const std::regex placePattern("^(\\S+)\\s+(\\d+)\\s+(\\d+)\\s+(\\d)\\s");
+
+    const std::regex numberPattern("^\\d+$");
 
     const char channelTypeY = 'Y';
     const char channelTypeX = 'X';
