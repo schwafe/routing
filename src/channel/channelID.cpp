@@ -1,8 +1,8 @@
 #include <cassert>
 #include <bitset>
 #include "channelID.hpp"
-#include "constants.hpp"
-#include "logging.hpp"
+#include "../constants.hpp"
+#include "../logging.hpp"
 
 channelID::channelID(unsigned char x, unsigned char y, char type)
 {

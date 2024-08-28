@@ -2,7 +2,7 @@
 #define CHANNELINFO_H
 
 #include <bitset>
-#include "constants.hpp"
+#include "../constants.hpp"
 
 class channelInfo
 {
@@ -11,10 +11,11 @@ class channelInfo
 
 public:
     bool isFull(unsigned char channelwidth) const;
-    unsigned char getUsedTracks() const;
+    unsigned char getTracksUsed() const;
+    unsigned char findFreeTrack(unsigned char channelWidth) const;
     bool isTrackFree(unsigned char track) const;
 
-    unsigned char useChannel(unsigned char optimalTrack);
+    void useChannel(unsigned char track);
 };
 
 #endif
