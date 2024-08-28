@@ -1,8 +1,9 @@
 #include <map>
-#include "channelID.hpp"
-#include "channelInfo.hpp"
+#include <set>
+#include "channel/channel.hpp"
 #include "block.hpp"
+#include "findResult.hpp"
 
-channelID findPindConcurrently(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, unsigned char arraySize, unsigned char &indexOfChosenChannel,
-                               unsigned char channelWidth, std::map<channelID, channelInfo> const &channelInformation, std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels,
-                               std::set<std::string> &reachedBlocks, std::map<std::string, std::shared_ptr<block>> const &blocks);
+findResult findPinWithThreads(std::set<unsigned char> tracksToCheck, std::map<unsigned char, std::map<channelID, unsigned char>> &channelToIndexMaps, std::map<unsigned char, std::map<unsigned char, std::set<channelID>>> &indexToChannelsMaps, unsigned char arraySize,
+                             unsigned char channelWidth, std::map<channelID, channelInfo> const &channelInformation, std::map<channelID, std::set<std::string>> const &relevantChannels,
+                             std::set<channelID> const &doublyRelevantChannels, std::map<std::string, std::shared_ptr<block>> const &blocks);

@@ -7,11 +7,11 @@
 
 class block
 {
-    char type{}; // C for CLB, P for pad
-    unsigned char x{};
-    unsigned char y{};
-    unsigned char subblockNumber = std::numeric_limits<unsigned char>::max(); // only relevant if type is pad
-    std::set<channelID> openPins{};
+    char type; // C for CLB, P for pad
+    unsigned char x;
+    unsigned char y;
+    unsigned char subblockNumber; // only relevant if type is pad
+    std::set<channelID> openPins;
 
 public:
     block(char type);

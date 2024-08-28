@@ -1,279 +1,126 @@
 #include "concurrentRouting.hpp"
+#include "routing.hpp"
 
 #include <cassert>
 #include <thread>
-#include <atomic>
-#include <shared_mutex>
+#include <future>
 
-std::shared_mutex cTIMutex;
-std::shared_mutex iTCMutex;
-std::shared_mutex fullyProcessedMutex;
-
-namespace constants
+void findPin(unsigned char trackToUse, unsigned char channelWidth, unsigned char arraySize, std::map<channelID, unsigned char> cTI,
+               std::map<unsigned char, std::set<channelID>> iTC, std::map<channelID, channelInfo> const &channelInformation,
+               std::map<channelID, std::set<std::string>> const &relevantChannels, std::set<channelID> const &doublyRelevantChannels,
+               std::map<std::string, std::shared_ptr<block>> const &blocks, std::promise<findResult> promise)
 {
-    const unsigned int maximumNumberOfThreads = std::thread::hardware_concurrency() != 0 ? std::thread::hardware_concurrency() : 4;
-    const unsigned char channelWorkloadPerThread = 8;
-}
+    std::map<channelID, unsigned char> channelToIndex = std::move(cTI);
+    std::map<unsigned char, std::set<channelID>> indexToChannels = std::move(iTC);
+    channelID chosenChannel = constants::uninitializedChannel;
+    unsigned char indexOfChosenChannel;
 
-void registerIndexConcurrently(channelID channel, unsigned char index, std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels)
-{
-    {
-        const std::lock_guard<std::shared_mutex> cTILock(cTIMutex);
-        channelToIndex.insert_or_assign(channel, index);
-    }
-    {
-        const std::lock_guard<std::shared_mutex> iTCLock(iTCMutex);
-        auto result = indexToChannels.find(index);
-        if (result == indexToChannels.end())
-            result = indexToChannels.emplace(index, std::set<channelID>{}).first;
-        result->second.emplace(channel);
-    }
-}
-
-bool testForRelevantChannelAndResult(channelID channel, unsigned char indexOfChannel, std::atomic_flag &gotResult, channelID &result, bool doublyRelChanExist, std::map<channelID, std::set<std::string>> const &relevantChannels, unsigned char &indexOfResult, std::atomic_flag &relevantChannelFound, channelID &firstRelChan, unsigned char &indexOfFirstRelChan, std::shared_ptr<std::atomic_flag> const &done, std::atomic_flag &anyThreadDone)
-{
-    if (!relevantChannelFound.test() && relevantChannels.contains(channel))
-    {
-        if (!relevantChannelFound.test_and_set())
-        {
-            if (doublyRelChanExist)
-            {
-                firstRelChan = channel;
-                indexOfFirstRelChan = indexOfChannel;
-            }
-            else
-            {
-                bool firstResult = !gotResult.test_and_set();
-                assert(firstResult);
-                result = channel;
-                indexOfResult = indexOfChannel;
-
-                done->test_and_set();
-                anyThreadDone.test_and_set();
-                anyThreadDone.notify_one();
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-void processChannelFully(std::stop_token stopToken, std::set<channelID> channels, unsigned char currentIndex, unsigned char arraySize, unsigned char channelWidth, bool doublyRelChanExist, std::map<channelID, channelInfo> const &channelInformation,
-                         std::map<channelID, std::set<std::string>> const &relevantChannels, std::set<channelID> const &doublyRelevantChannels, std::map<channelID, unsigned char> &channelToIndex,
-                         std::map<unsigned char, std::set<channelID>> &indexToChannels, std::set<channelID> &fullyProcessedChannels, std::atomic_flag &gotResult, channelID &result,
-                         unsigned char &indexOfResult, std::atomic_flag &relevantChannelFound, channelID &firstRelChan, unsigned char &indexOfFirstRelChan, std::shared_ptr<std::atomic_flag> const &done, std::atomic_flag &anyThreadDone)
-{
-    for (channelID channel : channels)
-    {
-        for (channelID neighbour : channel.getNeighbours(arraySize))
-        {
-            if (stopToken.stop_requested())
-                return;
-
-            bool channelHasIndex{};
-            unsigned char indexOfNeighbour{};
-            {
-                std::shared_lock<std::shared_mutex> cTILock(cTIMutex);
-                auto it = channelToIndex.find(neighbour);
-                channelHasIndex = it != channelToIndex.end();
-                if (channelHasIndex)
-                    indexOfNeighbour = it->second;
-            }
-
-            if (channelHasIndex)
-            {
-                if (indexOfNeighbour > currentIndex + 1)
-                {
-                    indexOfNeighbour = currentIndex + 1;
-                    registerIndexConcurrently(neighbour, indexOfNeighbour, channelToIndex, indexToChannels);
-                }
-
-                bool resultFound = testForRelevantChannelAndResult(neighbour, indexOfNeighbour, gotResult, result, doublyRelChanExist, relevantChannels, indexOfResult, relevantChannelFound, firstRelChan, indexOfFirstRelChan, done, anyThreadDone);
-                if (resultFound)
-                    return;
-            }
-            else if (!isChannelFull(neighbour, channelInformation, channelWidth))
-            {
-                unsigned char indexOfNeighbour = currentIndex + 1;
-                registerIndexConcurrently(neighbour, indexOfNeighbour, channelToIndex, indexToChannels);
-
-                if (doublyRelChanExist && doublyRelevantChannels.contains(neighbour))
-                {
-                    bool firstResult = !gotResult.test_and_set();
-                    if (firstResult)
-                    {
-                        result = neighbour;
-                        indexOfResult = indexOfNeighbour;
-                    }
-                    done->test_and_set();
-                    anyThreadDone.test_and_set();
-                    anyThreadDone.notify_one();
-                    return;
-                }
-                else
-                {
-                    bool resultFound = testForRelevantChannelAndResult(neighbour, indexOfNeighbour, gotResult, result, doublyRelChanExist, relevantChannels, indexOfResult, relevantChannelFound, firstRelChan, indexOfFirstRelChan, done, anyThreadDone);
-                    if (resultFound)
-                        return;
-                }
-            }
-        }
-
-        {
-            const std::lock_guard<std::shared_mutex> fullyProcessedLock(fullyProcessedMutex);
-            fullyProcessedChannels.emplace(channel);
-        }
-    }
-
-    done->test_and_set();
-    anyThreadDone.test_and_set();
-    anyThreadDone.notify_one();
-    return;
-}
-
-void chooseChannelWithPinCC(channelID const &chosenChannel, unsigned char indexOfChosenChannel, std::map<channelID, std::set<std::string>> &relevantChannels,
-                          std::set<channelID> &doublyRelevantChannels, std::set<std::string> &reachedBlocks, std::map<std::string, std::shared_ptr<block>> const &blocks)
-{
-    for (std::string associatedBlockName : relevantChannels.find(chosenChannel)->second)
-    {
-        reachedBlocks.insert(associatedBlockName);
-        std::shared_ptr<block> p_block = blocks.find(associatedBlockName)->second;
-        p_block->setChannelTaken(chosenChannel);
-
-        for (channelID channel : p_block->getOpenChannels())
-        {
-            assert(relevantChannels.contains(channel));
-            std::set<std::string> &associatedBlocks = relevantChannels.find(channel)->second;
-            associatedBlocks.erase(associatedBlockName);
-            if (!associatedBlocks.empty())
-            {
-                assert(doublyRelevantChannels.contains(channel));
-                doublyRelevantChannels.erase(channel);
-            }
-            else
-                relevantChannels.erase(channel);
-        }
-    }
-
-    relevantChannels.erase(chosenChannel);
-    doublyRelevantChannels.erase(chosenChannel);
-}
-
-channelID findPindConcurrently(std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, unsigned char arraySize, unsigned char &indexOfChosenChannel,
-                               unsigned char channelWidth, std::map<channelID, channelInfo> const &channelInformation, std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels,
-                               std::set<std::string> &reachedBlocks, std::map<std::string, std::shared_ptr<block>> const &blocks)
-{
+    bool chosen{};
     unsigned char currentIndex = constants::indexZero;
     std::set<channelID> fullyProcessedChannels{};
-    std::vector<std::jthread> threads{};
-    std::vector<std::shared_ptr<std::atomic_flag>> doneFlags{};
-    std::atomic_flag gotResult{};
-    std::atomic_flag anyThreadDone{};
-    channelID result{};
-    unsigned char indexOfResult = std::numeric_limits<unsigned char>::max();
-    std::atomic_flag relevantChannelFound{};
-    channelID firstRelChan{};
+    bool relevantChannelFound{};
+    channelID firstRelChan;
     unsigned char indexOfFirstRelChan{};
-    const bool doublyRelChanExist = doublyRelevantChannels.empty();
-
-    threads.reserve(constants::maximumNumberOfThreads);
-    doneFlags.reserve(constants::maximumNumberOfThreads);
-
-    assert(constants::maximumNumberOfThreads >= 1);
-
-    for (int index = 0; index < constants::maximumNumberOfThreads; index++)
-    {
-        threads.push_back(std::jthread{});
-        doneFlags.push_back(std::make_shared<std::atomic_flag>());
-        doneFlags[index]->test_and_set();
-    }
 
     assert(indexToChannels.contains(constants::indexZero));
 
-    while (!gotResult.test() && indexToChannels.contains(currentIndex))
+    auto iTCEntry = indexToChannels.find(currentIndex);
+    while (!chosen && iTCEntry != indexToChannels.end() && (!relevantChannelFound || (!doublyRelevantChannels.empty() && currentIndex < indexOfFirstRelChan + constants::additionalIterationsForDoublyRelevantChannels)))
     {
-        std::set<channelID> channelsOfCurrentIndex = indexToChannels.find(currentIndex)->second;
+        std::set<channelID> channelsOfCurrentIndex = iTCEntry->second;
 
-        anyThreadDone.clear();
-
-        auto it = channelsOfCurrentIndex.begin();
-        while (it != channelsOfCurrentIndex.end())
+        for (channelID channel : channelsOfCurrentIndex)
         {
-            for (int index = 0; index < constants::maximumNumberOfThreads; index++)
+            if (fullyProcessedChannels.contains(channel))
+                continue;
+
+            for (channelID neighbour : channel.getNeighbours(arraySize))
             {
-                if (doneFlags[index])
+                if (auto it = channelToIndex.find(neighbour); it != channelToIndex.end())
                 {
-                    doneFlags[index]->clear();
-
-                    std::set<channelID> channels;
+                    assert(it->second >= currentIndex - 1);
+                    chosen = processChannelWithIndex(neighbour, it->second, currentIndex + 1, trackToUse, channelToIndex, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels,
+                                                     relevantChannelFound, firstRelChan, indexOfFirstRelChan, blocks, channelInformation);
+                    if (chosen)
                     {
-                        std::shared_lock<std::shared_mutex> fullyProcessedLock(fullyProcessedMutex);
-                        for (unsigned char i = 0; i < constants::channelWorkloadPerThread; i++)
-                        {
-                            while (it != channelsOfCurrentIndex.end() && fullyProcessedChannels.contains(*it))
-                                it++;
-
-                            if (it != channelsOfCurrentIndex.end())
-                            {
-                                channels.insert(*it);
-                                it++;
-                            }
-                            else
-                                break;
-                        }
-                    }
-                    if (channels.empty())
+                        chosenChannel = neighbour;
                         break;
-
-                    if (threads[index].joinable())
-                    {
-                        threads[index].join();
                     }
-
-                    threads[index] = std::jthread(processChannelFully, channels, currentIndex, arraySize, channelWidth, doublyRelChanExist, std::cref(channelInformation), std::cref(relevantChannels),
-                                                  std::cref(doublyRelevantChannels), std::ref(channelToIndex), std::ref(indexToChannels), std::ref(fullyProcessedChannels), std::ref(gotResult),
-                                                  std::ref(result), std::ref(indexOfResult), std::ref(relevantChannelFound), std::ref(firstRelChan), std::ref(indexOfFirstRelChan),
-                                                  std::ref(doneFlags[index]), std::ref(anyThreadDone));
+                }
+                else if (isChannelTrackFree(neighbour, trackToUse, channelInformation))
+                {
+                    chosen = processChannelWithoutIndex(neighbour, currentIndex + 1, trackToUse, channelToIndex, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels,
+                                                             relevantChannelFound, firstRelChan, indexOfFirstRelChan, blocks);
+                    if (chosen)
+                    {
+                        chosenChannel = neighbour;
+                        break;
+                    }
                 }
             }
-
-            anyThreadDone.wait(false);
-            anyThreadDone.clear();
-            if (gotResult.test())
+            if (chosen)
                 break;
-        }
 
-        assert(indexToChannels.find(currentIndex)->second.size() == channelsOfCurrentIndex.size());
-
-        if (gotResult.test())
-        {
-            for (std::jthread &thread : threads)
-                thread.request_stop();
+            fullyProcessedChannels.emplace(channel);
         }
-        else if (!gotResult.test() && relevantChannelFound.test() && currentIndex + 1 == indexOfFirstRelChan + constants::additionalIterationsForDoublyRelevantChannels)
-        {
-            gotResult.test_and_set();
-            result = firstRelChan;
-            indexOfResult = indexOfFirstRelChan;
-        }
-        else
-            currentIndex++;
+        if (chosen)
+            break;
 
-        int counter{};
-        for (std::jthread &thread : threads)
-            if (thread.joinable())
-            {
-                counter++;
-                thread.join();
-            }
+        currentIndex++;
+        iTCEntry = indexToChannels.find(currentIndex);
     }
 
-    if (gotResult.test())
+    if (!chosen && relevantChannelFound)
     {
-        chooseChannelWithPinCC(result, indexOfResult, relevantChannels, doublyRelevantChannels, reachedBlocks, blocks);
-        indexOfChosenChannel = indexOfResult;
-        return result;
+        assert(relevantChannels.find(firstRelChan)->second.size() == 1);
+        indexOfChosenChannel = indexOfFirstRelChan;
+        chosenChannel = std::move(firstRelChan);
     }
-    else
-        return constants::uninitializedChannel;
+
+    promise.set_value(findResult{trackToUse, std::move(channelToIndex), std::move(indexToChannels), std::move(chosenChannel), std::move(indexOfChosenChannel)});
+}
+
+findResult findPinWithThreads(std::set<unsigned char> tracksToCheck, std::map<unsigned char, std::map<channelID, unsigned char>> &channelToIndexMaps, std::map<unsigned char, std::map<unsigned char, std::set<channelID>>> &indexToChannelsMaps, unsigned char arraySize,
+                             unsigned char channelWidth, std::map<channelID, channelInfo> const &channelInformation, std::map<channelID, std::set<std::string>> const &relevantChannels,
+                             std::set<channelID> const &doublyRelevantChannels, std::map<std::string, std::shared_ptr<block>> const &blocks)
+{
+    findResult bestResult;
+    unsigned char bestIndexOfChannelWithPin = std::numeric_limits<unsigned char>::max();
+
+    std::thread threads[tracksToCheck.size()];
+    std::future<findResult> futures[tracksToCheck.size()];
+
+    unsigned char threadCount = 0;
+    for (unsigned char track : tracksToCheck)
+    {
+        std::map<channelID, unsigned char> channelToIndex = channelToIndexMaps.find(track)->second;
+        std::map<unsigned char, std::set<channelID>> indexToChannels = indexToChannelsMaps.find(track)->second;
+        
+        std::promise<findResult> promise;
+        std::future<findResult> future = promise.get_future();
+
+        threads[threadCount] = std::thread(findPin, track, channelWidth, arraySize, std::move(channelToIndex), std::move(indexToChannels), std::cref(channelInformation), std::cref(relevantChannels), std::cref(doublyRelevantChannels), std::cref(blocks), std::move(promise));
+        futures[threadCount] = std::move(future);
+        threadCount++;
+    }
+
+    threadCount = 0;
+    for (unsigned char track : tracksToCheck)
+    {
+        findResult result = futures[threadCount].get();
+
+        channelToIndexMaps.insert_or_assign(track, result.channelToIndex);
+        indexToChannelsMaps.insert_or_assign(track, result.indexToChannels);
+
+        if (result.chosenChannel.isInitialized() && result.indexOfChosenChannel < bestIndexOfChannelWithPin)
+        {
+            bestIndexOfChannelWithPin = result.indexOfChosenChannel;
+            bestResult = std::move(result);
+        }
+
+        threads[threadCount].join();
+        threadCount++;
+    }
+
+    return std::move(bestResult);
 }

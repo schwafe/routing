@@ -5,8 +5,8 @@
 
 class channelID
 {
-    unsigned char x{};
-    unsigned char y{};
+    unsigned char x;
+    unsigned char y;
     char type{}; // x or y - horizontal or vertical - channel
 
 public:

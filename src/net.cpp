@@ -110,5 +110,5 @@ void net::setUsedTrack(channelID channel, unsigned char track)
 void net::setConnection(std::string connectedBlockName, unsigned char track, std::vector<channelID> connectionToBlock)
 {
     assert(namesOfConnectedBlocks.contains(connectedBlockName));
-    connectionsByRoutingOrder.emplace_back(connectedBlockName, std::make_pair(track, connectionToBlock));
+    connectionsByRoutingOrder.emplace_back(connectedBlockName, std::move(std::make_pair(track, connectionToBlock)));
 }

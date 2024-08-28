@@ -5,7 +5,7 @@
         "type": "cppdbg",
         "request": "launch",
         "program": "${workspaceFolder}/build/routing.app",
-        "args": ["./e64-4lut.net", "./e64-4lut.place", "./e64-4lut.route", "2"],
+        "args": ["./e64-4lut.net", "./e64-4lut.place", "./e64-4lut.route"],
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}/build/",
         "environment": [],
