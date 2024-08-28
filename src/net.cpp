@@ -35,9 +35,26 @@ unsigned short net::getConnectedBlockCount() const
     return namesOfConnectedBlocks.size();
 }
 
-bool net::usedChannel(const channelID &channel) const
+std::set<unsigned char> net::getUsedTracksAtSourceChannel() const
 {
-    return usedTracks.contains(channel);
+    std::set<unsigned char> usedTracksAtSourceChannel{};
+    auto range = usedTracks.equal_range(sourceChannel);
+    for (auto it = range.first; it != range.second; it++)
+    {
+        usedTracksAtSourceChannel.insert(it->second);
+    }
+    return usedTracksAtSourceChannel;
+}
+
+bool net::usedChannelTrackCombination(const channelID &channel, unsigned char track) const
+{
+    auto range = usedTracks.equal_range(channel);
+    for (auto it = range.first; it != range.second; it++)
+    {
+        if (it->second == track)
+            return true;
+    }
+    return false;
 }
 
 std::set<std::string> net::getNamesOfConnectedBlocks() const
@@ -45,7 +62,7 @@ std::set<std::string> net::getNamesOfConnectedBlocks() const
     return namesOfConnectedBlocks;
 }
 
-std::vector<std::pair<std::string, std::vector<std::pair<channelID, unsigned char>>>> net::getConnectionsByRoutingOrder() const
+std::vector<std::pair<std::string, std::pair<unsigned char, std::vector<channelID>>>> net::getConnectionsByRoutingOrder() const
 {
     return connectionsByRoutingOrder;
 }
@@ -90,8 +107,8 @@ void net::setUsedTrack(channelID channel, unsigned char track)
     usedTracks.emplace(channel, track);
 }
 
-void net::setConnection(std::string connectedBlockName, std::vector<std::pair<channelID, unsigned char>> connectionToBlock)
+void net::setConnection(std::string connectedBlockName, unsigned char track, std::vector<channelID> connectionToBlock)
 {
     assert(namesOfConnectedBlocks.contains(connectedBlockName));
-    connectionsByRoutingOrder.emplace_back(connectedBlockName, connectionToBlock);
+    connectionsByRoutingOrder.emplace_back(connectedBlockName, std::make_pair(track, connectionToBlock));
 }

@@ -3,7 +3,7 @@
 
 #include <regex>
 #include <string>
-#include "channelID.hpp"
+#include "channel/channelID.hpp"
 
 namespace constants
 {

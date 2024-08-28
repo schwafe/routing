@@ -1,10 +1,4 @@
-TODO ressourcenoptimierung ?? (mehr std::move)
-TODO Einträge der Pins in Kanälen [reachedBlocks] (bis zu zwei pro Kanal) für jeden Durchlauf des Algorithmus als eigene Struktur, statt Set?
 TODO CMake release option für maximale Geschwindigkeit auswählen, asserts ausschalten und debug logging output entfernen
-
-TODO wie vpr einen pseudo-zufälligen Ansatz verwenden, um mit mehreren Versuchen ein besseres Ergebnis erzielen zu können?
-TODO vpr schafft ex5p mit 13 Kanälen - mein Programm bisher mit 16 - nach Beachtung von doublyRelevantChannels sogar 18 Kanäle
-TODO Sawitzki sagen: manual erklärt nicht ausreichend, dass OPIN nur erneut auftaucht, wenn nicht die gleiche Spur wiederverwendet wird
 
 Erster Ansatz ist eine Rasterverdrahtung.
 

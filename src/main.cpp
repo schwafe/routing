@@ -4,7 +4,7 @@
 #include <cassert>
 #include "constants.hpp"
 #include "io.hpp"
-#include "channel.hpp"
+#include "channel/channel.hpp"
 #include "routing.hpp"
 #include "block.hpp"
 #include "logging.hpp"
@@ -109,19 +109,20 @@ void deepCopy(std::vector<std::shared_ptr<net>> const &sortedNets, std::vector<s
         copyOfBlocks.insert(std::make_pair(entry.first, std::make_shared<block>(*entry.second)));
 }
 
-void tryRoutingWithChannelWidth(std::vector<std::shared_ptr<net>> const &sortedNets, std::vector<std::shared_ptr<net>> const &unsortedNets, std::vector<std::shared_ptr<net>> &tempNets,
-                                std::map<std::string, std::shared_ptr<block>> const &blocks, std::map<std::string, std::shared_ptr<block>> &tempBlocks, unsigned char arraySize,
+void tryRoutingWithChannelWidth(std::vector<std::shared_ptr<net>> const &sortedNets, std::vector<std::shared_ptr<net>> const &unsortedNets, std::vector<std::shared_ptr<net>> &finalNets,
+                                std::map<std::string, std::shared_ptr<block>> const &blocks, std::map<std::string, std::shared_ptr<block>> &finalBlocks, unsigned char arraySize,
                                 unsigned char channelWidth, bool &routingIsSorted, unsigned short &netsRouted)
 {
-    deepCopy(sortedNets, tempNets, blocks, tempBlocks);
-    netsRouted = routeNets(arraySize, channelWidth, tempNets, tempBlocks);
+    printLogMessage("Trying routing with a channel width of " + std::to_string(channelWidth));
+    deepCopy(sortedNets, finalNets, blocks, finalBlocks);
+    netsRouted = routeNets(arraySize, channelWidth, finalNets, finalBlocks);
 
     if (netsRouted == sortedNets.size())
         routingIsSorted = true;
     else
     {
-        deepCopy(unsortedNets, tempNets, blocks, tempBlocks);
-        netsRouted = routeNets(arraySize, channelWidth, tempNets, tempBlocks);
+        deepCopy(unsortedNets, finalNets, blocks, finalBlocks);
+        netsRouted = routeNets(arraySize, channelWidth, finalNets, finalBlocks);
         if (netsRouted == sortedNets.size())
             routingIsSorted = false;
     }
@@ -129,8 +130,9 @@ void tryRoutingWithChannelWidth(std::vector<std::shared_ptr<net>> const &sortedN
 
 void routeAndMinimiseChannelWidth(std::vector<std::shared_ptr<net>> const &sortedNets, std::vector<std::shared_ptr<net>> const &unsortedNets, std::vector<std::shared_ptr<net>> &finalNets,
                                   std::map<std::string, std::shared_ptr<block>> const &blocks, std::map<std::string, std::shared_ptr<block>> &finalBlocks, unsigned char arraySize,
-                                  unsigned char channelWidth, bool &routingIsSorted)
+                                  bool &routingIsSorted)
 {
+    unsigned char channelWidth = constants::startingValueChannelWidth;
     unsigned short netsRouted{};
     unsigned char successfulWidth = std::numeric_limits<unsigned char>::max();
     unsigned char failedWidth = 0;
@@ -186,7 +188,7 @@ int main(int argc, char *argv[])
     clock_t startTime = clock();
 
     abortIfTrue(argc != 4 && argc != 5, constants::wrongArguments, "Argument count unexpected! Arguments received: '" + argsToString(argc, argv) + constants::correctArgumentsMessage);
-    abortIfTrue(!std::regex_match(argv[4], constants::numberPattern), constants::wrongArguments, "The fourth argument was not a number! Arguments received: '" + argsToString(argc, argv) + constants::correctArgumentsMessage);
+    abortIfTrue(argc == 5 && !std::regex_match(argv[4], constants::numberPattern), constants::wrongArguments, "The fourth argument was not a number! Arguments received: '" + argsToString(argc, argv) + constants::correctArgumentsMessage);
 
     unsigned char channelWidthToTry = std::numeric_limits<unsigned char>::max();
     if (argc == 5)
@@ -198,8 +200,6 @@ int main(int argc, char *argv[])
     std::string routeFileName = argv[3];
     std::map<std::string, std::shared_ptr<block>> blocks{};
     std::set<std::shared_ptr<net>> globalNets{};
-
-    unsigned char channelWidth = constants::startingValueChannelWidth;
 
     std::vector<std::shared_ptr<net>> sortedNets{}, unsortedNets{};
     readNetsAndBlocks(netFileName, placeFileName, arraySize, blocks, globalNets, sortedNets, unsortedNets);
@@ -216,26 +216,25 @@ int main(int argc, char *argv[])
 
     if (channelWidthToTry != std::numeric_limits<unsigned char>::max())
     {
-
-        std::vector<std::shared_ptr<net>> tempNets{};
-        std::map<std::string, std::shared_ptr<block>> tempBlocks{};
         unsigned short netsRouted{};
-        tryRoutingWithChannelWidth(sortedNets, unsortedNets, tempNets, blocks, tempBlocks, arraySize, channelWidth, routingIsSorted, netsRouted);
+        tryRoutingWithChannelWidth(sortedNets, unsortedNets, finalNets, blocks, finalBlocks, arraySize, channelWidthToTry, routingIsSorted, netsRouted);
 
         if (netsRouted == sortedNets.size())
         {
-            printLogMessage("Routing succeeded with the given channel width of " + std::to_string(channelWidth) + '.');
+            printLogMessage("Routing succeeded with the given channel width of " + std::to_string(channelWidthToTry) + '.');
             if (!routingIsSorted)
                 printLogMessage("Routing failed with pre-sorting, but succeeded without sorting, so the result of the unsorted routing is used.");
         }
         else
-            printLogMessage("Routing failed with the given channel width of " + std::to_string(channelWidth) + '.');
+            printLogMessage("Routing failed with the given channel width of " + std::to_string(channelWidthToTry) + '.');
     }
     else
-        routeAndMinimiseChannelWidth(sortedNets, unsortedNets, finalNets, blocks, finalBlocks, arraySize, channelWidth, routingIsSorted);
+    {
+        routeAndMinimiseChannelWidth(sortedNets, unsortedNets, finalNets, blocks, finalBlocks, arraySize, routingIsSorted);
 
-    if (!routingIsSorted)
-        printLogMessage("Routing with pre-sorting (for minimizing delay) would have required a higher channelwidh, so the result of the unsorted routing is used instead.");
+        if (!routingIsSorted)
+            printLogMessage("Routing with pre-sorting (for minimizing delay) would have required a higher channelwidh, so the result of the unsorted routing is used instead.");
+    }
 
     printLogMessage("Writing routing file!");
     writeRouting(routeFileName, arraySize, finalNets, globalNets, finalBlocks);

@@ -13,7 +13,7 @@ block::block(block const &other)
     x = other.x;
     y = other.y;
     subblockNumber = other.subblockNumber;
-    openChannels = std::set<channelID>(other.openChannels);
+    openPins = std::set<channelID>(other.openPins);
 }
 
 void block::initialise(unsigned char x, unsigned char y, unsigned char subblockNumber)
@@ -49,7 +49,7 @@ void block::initialise(unsigned char x, unsigned char y, unsigned char subblockN
             channels.emplace(x, y - 1, constants::channelTypeX);
         }
     }
-    block::openChannels = channels;
+    block::openPins = channels;
 }
 
 char block::getType() const
@@ -72,9 +72,9 @@ unsigned char block::getSubblockNumber() const
     return subblockNumber;
 }
 
-std::set<channelID> block::getOpenChannels() const
+std::set<channelID> block::getOpenPins() const
 {
-    return openChannels;
+    return openPins;
 }
 
 unsigned char block::determinePinNumber(channelID const &channel) const
@@ -105,8 +105,8 @@ unsigned char block::determinePinNumber(channelID const &channel) const
     return number;
 }
 
-void block::setChannelTaken(channelID const &channel)
+void block::setPinTaken(channelID const &channel)
 {
-    assert(openChannels.contains(channel));
-    openChannels.erase(channel);
+    assert(openPins.contains(channel));
+    openPins.erase(channel);
 }

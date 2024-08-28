@@ -7,7 +7,7 @@
 #include <stack>
 #include <limits>
 #include <vector>
-#include "channel.hpp"
+#include "channel/channel.hpp"
 
 class net
 {
@@ -16,7 +16,7 @@ class net
     std::string sourceBlockName{};
     std::set<std::string> namesOfConnectedBlocks{};
     std::multimap<channelID, unsigned char> usedTracks{};
-    std::vector<std::pair<std::string, std::vector<std::pair<channelID, unsigned char>>>> connectionsByRoutingOrder{};
+    std::vector<std::pair<std::string, std::pair<unsigned char, std::vector<channelID>>>> connectionsByRoutingOrder{};
 
 public:
     net(std::string name);
@@ -27,9 +27,10 @@ public:
     channelID getSourceChannel() const;
     std::string getSourceBlockName() const;
     std::set<std::string> getNamesOfConnectedBlocks() const;
-    std::vector<std::pair<std::string, std::vector<std::pair<channelID, unsigned char>>>> getConnectionsByRoutingOrder() const;
+    std::vector<std::pair<std::string, std::pair<unsigned char, std::vector<channelID>>>> getConnectionsByRoutingOrder() const;
 
-    bool usedChannel(const channelID &channel) const;
+    std::set<unsigned char> getUsedTracksAtSourceChannel() const;
+    bool usedChannelTrackCombination(const channelID &channel, unsigned char track) const;
     bool allPinsConnected() const;
     unsigned char chooseUsedTrack(const channelID &channel, unsigned char optimalTrack) const;
 
@@ -37,7 +38,7 @@ public:
     void setSourceBlockName(std::string sourceBlockName);
     void addConnectedBlock(std::string connectedBlockName);
     void setUsedTrack(channelID channel, unsigned char track);
-    void setConnection(std::string connectedBlockName, std::vector<std::pair<channelID, unsigned char>> connectionToBlock);
+    void setConnection(std::string connectedBlockName, unsigned char track, std::vector<channelID> connectionToBlock);
 };
 
 #endif

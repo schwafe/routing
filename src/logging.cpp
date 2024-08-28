@@ -10,7 +10,8 @@ std::string channelIDToString(channelID const &channel)
 std::string argsToString(int argc, char *argv[])
 {
     std::string args = "";
-    for (int index = 0; index < argc; index++)
+    // starting at 1, because the first parameter is not input by the user
+    for (int index = 1; index < argc; index++)
     {
         args += argv[index];
         args += "' '";
@@ -26,11 +27,11 @@ std::string listConnectedBlocks(std::shared_ptr<net> const &p_net)
     return list.substr(0, list.size() - 2);
 }
 
-void printIndices(std::map<channelID, unsigned char> const &indices)
+void printChannelToIndex(std::map<channelID, unsigned char> const &channelToIndex)
 {
     std::cout << '\n'
-              << "Indices (x,y,type) - index:" << '\n';
-    for (auto &entry : indices)
+              << "channelToIndex (x,y,type) - index:" << '\n';
+    for (auto &entry : channelToIndex)
         std::cout << channelIDToString(entry.first) << " - " << +entry.second << '\n';
     std::cout << '\n';
     std::cout << std::endl;
@@ -41,16 +42,18 @@ void printConnections(std::shared_ptr<net> const &p_net)
     std::cout << "net sourceBlockName: '" << p_net->getSourceBlockName() << "' size: " << p_net->getConnectedBlockCount() << '\n';
     for (auto &entry : p_net->getConnectionsByRoutingOrder())
     {
-        std::vector<std::pair<channelID, unsigned char>> connection{entry.second};
+        unsigned char track = entry.second.first;
+        std::vector<channelID> connection = entry.second.second;
         assert(!connection.empty());
 
         std::cout << "\tconnectedBlockName: '" << entry.first << "'" << '\n';
-        for (std::pair<channelID, unsigned char> connectionPair : connection)
-            std::cout << "\t\t" << channelIDToString(connectionPair.first) << " - " << +connectionPair.second << '\n';
+        for (channelID channel : connection)
+            std::cout << "\t\t" << channelIDToString(channel) << " - " << +track << '\n';
     }
     std::cout << std::endl;
 }
 
-void printLogMessage(std::string const &loggingMessage) {
+void printLogMessage(std::string const &loggingMessage)
+{
     std::cout << loggingMessage << std::endl;
 }

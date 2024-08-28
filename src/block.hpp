@@ -3,7 +3,7 @@
 
 #include <set>
 #include <limits>
-#include "channel.hpp"
+#include "channel/channel.hpp"
 
 class block
 {
@@ -11,7 +11,7 @@ class block
     unsigned char x{};
     unsigned char y{};
     unsigned char subblockNumber = std::numeric_limits<unsigned char>::max(); // only relevant if type is pad
-    std::set<channelID> openChannels{};
+    std::set<channelID> openPins{};
 
 public:
     block(char type);
@@ -22,11 +22,11 @@ public:
     unsigned char getX() const;
     unsigned char getY() const;
     unsigned char getSubblockNumber() const;
-    std::set<channelID> getOpenChannels() const;
+    std::set<channelID> getOpenPins() const;
 
     unsigned char determinePinNumber(channelID const &channel) const;
 
-    void setChannelTaken(channelID const &channel);
+    void setPinTaken(channelID const &channel);
 };
 
 #endif

@@ -311,16 +311,15 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
         {
             assert(blocks.contains(connectionEntry.first));
             std::shared_ptr<block> p_block = blocks.find(connectionEntry.first)->second;
-            std::vector<std::pair<channelID, unsigned char>> connection = connectionEntry.second;
+            unsigned char track = connectionEntry.second.first;
+            std::vector<channelID> connection = connectionEntry.second.second;
             channelID channel;
 
             assert(!connection.empty());
 
             for (auto revIt = connection.rbegin(); revIt != connection.rend(); revIt++)
             {
-                channel = revIt->first;
-                unsigned char track = revIt->second;
-
+                channel = *revIt;
                 if (channel == p_net->getSourceChannel())
                 {
                     assert(revIt == connection.rbegin());
