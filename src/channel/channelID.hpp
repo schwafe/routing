@@ -11,7 +11,7 @@ class channelID
 
 public:
     auto operator<=>(channelID const &rhs) const = default;
-    channelID::channelID(unsigned char x, unsigned char y, char type) : x(x), y(y), type(type) {};
+    channelID(unsigned char x, unsigned char y, char type) : x(x), y(y), type(type) {};
     channelID() {};
 
     bool isInitialized() const;
