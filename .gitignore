@@ -53,6 +53,7 @@ test files
 *.log
 *.net
 *.place
+*.route
 
 #tests (for now, until they actually work)
 test
