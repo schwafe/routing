@@ -2,6 +2,7 @@
 #include <iostream>
 #include <regex>
 #include <cassert>
+#include <thread>
 #include "constants.hpp"
 #include "io.hpp"
 #include "channel/channel.hpp"
@@ -9,7 +10,7 @@
 #include "block.hpp"
 #include "logging.hpp"
 
-void abortIfTrue(bool condition, unsigned char errorCode, std::string errorMessage)
+void abortIfTrue(bool condition, unsigned char errorCode, std::string const &errorMessage)
 {
     if (condition)
     {
@@ -28,7 +29,7 @@ void sortNets(std::map<std::string, std::shared_ptr<net>> const &netsByNameOfThe
 
     unsortedNets.reserve(netsByNameOfTheNet.size() - globalNets.size());
 
-    for (auto entry : netsByNameOfTheNet)
+    for (auto const &entry : netsByNameOfTheNet)
     {
         std::shared_ptr<net> p_net = entry.second;
         if (!globalNets.contains(p_net))
@@ -102,30 +103,57 @@ void deepCopy(std::vector<std::shared_ptr<net>> const &sortedNets, std::vector<s
     copyOfSortedNets = std::vector<std::shared_ptr<net>>{};
     copyOfBlocks = std::map<std::string, std::shared_ptr<block>>{};
 
-    for (std::shared_ptr<net> p_net : sortedNets)
+    for (std::shared_ptr<net> const &p_net : sortedNets)
         copyOfSortedNets.push_back(std::make_shared<net>(*p_net));
 
     for (auto &entry : blocks)
         copyOfBlocks.insert(std::make_pair(entry.first, std::make_shared<block>(*entry.second)));
 }
 
+void copyAndRoute(std::vector<std::shared_ptr<net>> const &nets, std::vector<std::shared_ptr<net>> &tempNets, std::map<std::string, std::shared_ptr<block>> const &blocks,
+                  std::map<std::string, std::shared_ptr<block>> &tempBlocks, unsigned char arraySize, unsigned char channelWidth, std::size_t &netsRouted)
+{
+    deepCopy(nets, tempNets, blocks, tempBlocks);
+    netsRouted = routeNets(arraySize, channelWidth, tempNets, tempBlocks);
+}
+
 void tryRoutingWithChannelWidth(std::vector<std::shared_ptr<net>> const &sortedNets, std::vector<std::shared_ptr<net>> const &unsortedNets, std::vector<std::shared_ptr<net>> &finalNets,
                                 std::map<std::string, std::shared_ptr<block>> const &blocks, std::map<std::string, std::shared_ptr<block>> &finalBlocks, unsigned char arraySize,
-                                unsigned char channelWidth, bool &routingIsSorted, unsigned short &netsRouted)
+                                unsigned char channelWidth, bool &routingIsSorted, std::size_t &netsRouted)
 {
     printLogMessage("Trying routing with a channel width of " + std::to_string(channelWidth));
-    deepCopy(sortedNets, finalNets, blocks, finalBlocks);
-    netsRouted = routeNets(arraySize, channelWidth, finalNets, finalBlocks);
 
-    if (netsRouted == sortedNets.size())
-        routingIsSorted = true;
-    else
+    size_t netsRoutedSorted{};
+    std::vector<std::shared_ptr<net>> tempNetsSorted;
+    std::map<std::string, std::shared_ptr<block>> tempBlocksSorted;
+
+    std::thread sortedThread(copyAndRoute, std::cref(sortedNets), std::ref(tempNetsSorted), std::cref(blocks), std::ref(tempBlocksSorted), arraySize, channelWidth, std::ref(netsRoutedSorted));
+
+    size_t netsRoutedUnsorted{};
+    std::vector<std::shared_ptr<net>> tempNetsUnsorted;
+    std::map<std::string, std::shared_ptr<block>> tempBlocksUnsorted;
+
+    std::thread unsortedThread(copyAndRoute, std::cref(unsortedNets), std::ref(tempNetsUnsorted), std::cref(blocks), std::ref(tempBlocksUnsorted), arraySize, channelWidth, std::ref(netsRoutedUnsorted));
+
+    sortedThread.join();
+    unsortedThread.join();
+
+    if (netsRoutedSorted == sortedNets.size())
     {
-        deepCopy(unsortedNets, finalNets, blocks, finalBlocks);
-        netsRouted = routeNets(arraySize, channelWidth, finalNets, finalBlocks);
-        if (netsRouted == sortedNets.size())
-            routingIsSorted = false;
+        routingIsSorted = true;
+        netsRouted = netsRoutedSorted;
+        finalNets = std::move(tempNetsSorted);
+        finalBlocks = std::move(tempBlocksSorted);
     }
+    else if (netsRoutedUnsorted == sortedNets.size())
+    {
+        routingIsSorted = false;
+        netsRouted = netsRoutedUnsorted;
+        finalNets = std::move(tempNetsUnsorted);
+        finalBlocks = std::move(tempBlocksUnsorted);
+    }
+    else
+        netsRouted = netsRoutedSorted;
 }
 
 void routeAndMinimiseChannelWidth(std::vector<std::shared_ptr<net>> const &sortedNets, std::vector<std::shared_ptr<net>> const &unsortedNets, std::vector<std::shared_ptr<net>> &finalNets,
@@ -133,28 +161,25 @@ void routeAndMinimiseChannelWidth(std::vector<std::shared_ptr<net>> const &sorte
                                   bool &routingIsSorted)
 {
     unsigned char channelWidth = constants::startingValueChannelWidth;
-    unsigned short netsRouted{};
+    std::size_t netsRouted{};
     unsigned char successfulWidth = std::numeric_limits<unsigned char>::max();
     unsigned char failedWidth = 0;
     std::vector<std::shared_ptr<net>> tempNets{};
     std::map<std::string, std::shared_ptr<block>> tempBlocks{};
-    do
+
+    while (failedWidth < successfulWidth - 1)
     {
-        tryRoutingWithChannelWidth(sortedNets, unsortedNets, tempNets, blocks, tempBlocks, arraySize, channelWidth, routingIsSorted, netsRouted);
+        tryRoutingWithChannelWidth(sortedNets, unsortedNets, finalNets, blocks, finalBlocks, arraySize, channelWidth, routingIsSorted, netsRouted);
 
         if (netsRouted == sortedNets.size())
         {
             successfulWidth = channelWidth;
-            finalNets = tempNets;
-            finalBlocks = tempBlocks;
             printLogMessage("Routing succeeded with a channelWidth of " + std::to_string(+successfulWidth) + " tracks!");
 
             if (failedWidth != 0)
                 channelWidth = (channelWidth + failedWidth) / 2;
             else
-                channelWidth = channelWidth / 2;
-
-            assert(channelWidth > 0);
+                channelWidth = successfulWidth > 1 ? channelWidth / 2 : successfulWidth;
         }
         else
         {
@@ -179,13 +204,14 @@ void routeAndMinimiseChannelWidth(std::vector<std::shared_ptr<net>> const &sorte
         }
 
         assert(channelWidth <= constants::maximumChannelWidth + 1);
-    } while (failedWidth < successfulWidth - 1);
+    }
     printLogMessage("Using the result from the successful run with a channelWidth of " + std::to_string(+successfulWidth) + " tracks!");
 }
 
 int main(int argc, char *argv[])
 {
-    clock_t startTime = clock();
+    struct timeval startTime, endTime;
+    gettimeofday(&startTime, NULL);
 
     abortIfTrue(argc != 4 && argc != 5, constants::wrongArguments, "Argument count unexpected! Arguments received: '" + argsToString(argc, argv) + constants::correctArgumentsMessage);
     abortIfTrue(argc == 5 && !std::regex_match(argv[4], constants::numberPattern), constants::wrongArguments, "The fourth argument was not a number! Arguments received: '" + argsToString(argc, argv) + constants::correctArgumentsMessage);
@@ -198,10 +224,10 @@ int main(int argc, char *argv[])
     std::string netFileName = argv[1];
     std::string placeFileName = argv[2];
     std::string routeFileName = argv[3];
-    std::map<std::string, std::shared_ptr<block>> blocks{};
-    std::set<std::shared_ptr<net>> globalNets{};
+    std::map<std::string, std::shared_ptr<block>> blocks;
+    std::set<std::shared_ptr<net>> globalNets;
 
-    std::vector<std::shared_ptr<net>> sortedNets{}, unsortedNets{};
+    std::vector<std::shared_ptr<net>> sortedNets, unsortedNets;
     readNetsAndBlocks(netFileName, placeFileName, arraySize, blocks, globalNets, sortedNets, unsortedNets);
 
     std::string logMessage = "The .net and .place files have been successfully read!\n" + std::to_string(sortedNets.size() + globalNets.size()) + " nets ";
@@ -211,12 +237,12 @@ int main(int argc, char *argv[])
     printLogMessage(logMessage);
 
     bool routingIsSorted{};
-    std::vector<std::shared_ptr<net>> finalNets{};
-    std::map<std::string, std::shared_ptr<block>> finalBlocks{};
+    std::vector<std::shared_ptr<net>> finalNets;
+    std::map<std::string, std::shared_ptr<block>> finalBlocks;
 
     if (channelWidthToTry != std::numeric_limits<unsigned char>::max())
     {
-        unsigned short netsRouted{};
+        std::size_t netsRouted{};
         tryRoutingWithChannelWidth(sortedNets, unsortedNets, finalNets, blocks, finalBlocks, arraySize, channelWidthToTry, routingIsSorted, netsRouted);
 
         if (netsRouted == sortedNets.size())
@@ -226,7 +252,10 @@ int main(int argc, char *argv[])
                 printLogMessage("Routing failed with pre-sorting, but succeeded without sorting, so the result of the unsorted routing is used.");
         }
         else
+        {
             printLogMessage("Routing failed with the given channel width of " + std::to_string(channelWidthToTry) + '.');
+            return constants::channelWidthTooLow;
+        }
     }
     else
     {
@@ -239,11 +268,16 @@ int main(int argc, char *argv[])
     printLogMessage("Writing routing file!");
     writeRouting(routeFileName, arraySize, finalNets, globalNets, finalBlocks);
 
-    clock_t endTime = clock();
+    gettimeofday(&endTime, NULL);
+    long elapsedSeconds = endTime.tv_sec - startTime.tv_sec;
+    long elapsedMilliseconds = (endTime.tv_usec - startTime.tv_usec) / constants::microsecondsPerMillisecond;
+    if (elapsedMilliseconds < 0)
+    {
+        elapsedSeconds--;
+        elapsedMilliseconds += constants::millisecondsPerSecond;
+    }
 
-    double duration = 1.0 * (endTime - startTime) / CLOCKS_PER_SEC;
-
-    printf("Program ran for: %.3f seconds.\n", duration);
+    printf("Program ran for: %d.%d seconds.\n", elapsedSeconds, elapsedMilliseconds);
 
     return constants::success;
 }

@@ -2,20 +2,6 @@
 #include "block.hpp"
 #include "constants.hpp"
 
-block::block(char type)
-{
-    block::type = type;
-}
-
-block::block(block const &other)
-{
-    type = other.type;
-    x = other.x;
-    y = other.y;
-    subblockNumber = other.subblockNumber;
-    openPins = std::set<channelID>(other.openPins);
-}
-
 void block::initialise(unsigned char x, unsigned char y, unsigned char subblockNumber)
 {
     block::x = x;

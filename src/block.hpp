@@ -8,14 +8,13 @@
 class block
 {
     char type; // C for CLB, P for pad
-    unsigned char x;
-    unsigned char y;
-    unsigned char subblockNumber; // only relevant if type is pad
+    unsigned char x{};
+    unsigned char y{};
+    unsigned char subblockNumber{}; // only relevant if type is pad
     std::set<channelID> openPins;
 
 public:
-    block(char type);
-    block(const block &other);
+    block(char type) : type(type) {};
     void initialise(unsigned char x, unsigned char y, unsigned char subblockNumber);
 
     char getType() const;

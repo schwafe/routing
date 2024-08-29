@@ -8,10 +8,10 @@
 #include "findResult.hpp"
 #include "concurrentRouting.hpp"
 
-std::map<channelID, std::set<std::string>> findRelevantChannels(std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels,
-                                                                std::shared_ptr<net> const &p_net, std::map<std::string, std::shared_ptr<block>> const &blocks)
+void generateRelevantChannels(std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels,
+                              std::shared_ptr<net> const &p_net, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
-    for (std::string connectedBlockName : p_net->getNamesOfConnectedBlocks())
+    for (std::string const &connectedBlockName : p_net->getNamesOfConnectedBlocks())
     {
         assert(blocks.contains(connectedBlockName));
         for (channelID channelWithPin : blocks.find(connectedBlockName)->second->getOpenPins())
@@ -20,17 +20,14 @@ std::map<channelID, std::set<std::string>> findRelevantChannels(std::map<channel
             {
                 it->second.insert(connectedBlockName);
                 assert(relevantChannels.find(channelWithPin)->second.size() == 2);
+
                 assert(!doublyRelevantChannels.contains(channelWithPin));
                 doublyRelevantChannels.insert(channelWithPin);
             }
             else
-            {
-                std::set<std::string> associatedBlocks{connectedBlockName};
-                relevantChannels.insert(std::make_pair(channelWithPin, associatedBlocks));
-            }
+                relevantChannels.emplace(channelWithPin, std::move(std::set<std::string>{connectedBlockName}));
         }
     }
-    return relevantChannels;
 }
 
 /* Adds or overwrites the entry in channelToIndex with the given index and adds the channel to the set of channels for the given index in indexToChannels.
@@ -42,36 +39,36 @@ void registerIndex(channelID channel, unsigned char index, std::map<channelID, u
 
     auto result = indexToChannels.find(index);
     if (result == indexToChannels.end())
-        result = indexToChannels.emplace(index, std::set<channelID>{}).first;
+        result = indexToChannels.emplace(index, std::move(std::set<channelID>{})).first;
     result->second.emplace(channel);
 }
 
-void registerSourceChannelIndex(channelID sourceChannel, std::map<unsigned char, std::map<channelID, unsigned char>> &channelToIndex,
-                                std::map<unsigned char, std::map<unsigned char, std::set<channelID>>> &indexToChannels, unsigned char channelWidth)
+void registerSourceChannelIndex(channelID sourceChannel, std::map<unsigned char, std::map<channelID, unsigned char>> &channelToIndexMaps,
+                                std::map<unsigned char, std::map<unsigned char, std::set<channelID>>> &indexToChannelsMaps, unsigned char channelWidth)
 {
     for (unsigned char track = 0; track < channelWidth; track++)
     {
-        channelToIndex.emplace(track, std::map<channelID, unsigned char>{{sourceChannel, constants::indexZero}});
-        assert(channelToIndex.find(track)->second.size() == 1 && channelToIndex.find(track)->second.find(sourceChannel)->second == constants::indexZero);
+        channelToIndexMaps.emplace(track, std::move(std::map<channelID, unsigned char>{{sourceChannel, constants::indexZero}}));
+        assert(channelToIndexMaps.find(track)->second.size() == 1);
 
-        indexToChannels.emplace(track, std::map<unsigned char, std::set<channelID>>{{constants::indexZero, std::set<channelID>{sourceChannel}}});
-        assert(indexToChannels.find(track)->second.contains(constants::indexZero));
-        assert(indexToChannels.find(track)->second.find(constants::indexZero)->second.size() == 1);
+        indexToChannelsMaps.emplace(track, std::move(std::map<unsigned char, std::set<channelID>>{{constants::indexZero, std::move(std::set<channelID>{sourceChannel})}}));
+        assert(indexToChannelsMaps.find(track)->second.contains(constants::indexZero));
+        assert(indexToChannelsMaps.find(track)->second.find(constants::indexZero)->second.size() == 1);
     }
-    assert(channelToIndex.size() == channelWidth);
-    assert(indexToChannels.size() == channelWidth);
+    assert(channelToIndexMaps.size() == channelWidth);
+    assert(indexToChannelsMaps.size() == channelWidth);
 }
 
-void updateNetAndCounterAndRelevantChannels(channelID const &chosenChannel, unsigned char track, std::vector<channelID> connectionToBlock,
+void updateNetAndCounterAndRelevantChannels(channelID const &chosenChannel, unsigned char track, std::vector<channelID> const &connectionToBlock,
                                             std::map<std::string, std::shared_ptr<block>> const &blocks, std::shared_ptr<net> const &p_net, unsigned short &blocksReached,
                                             std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels)
 {
-    for (std::string associatedBlockName : relevantChannels.find(chosenChannel)->second)
+    for (std::string const &associatedBlockName : relevantChannels.find(chosenChannel)->second)
     {
         blocksReached++;
         p_net->setConnection(associatedBlockName, track, connectionToBlock);
 
-        std::shared_ptr<block> p_block = blocks.find(associatedBlockName)->second;
+        std::shared_ptr<block> const &p_block = blocks.find(associatedBlockName)->second;
         p_block->setPinTaken(chosenChannel);
 
         for (channelID openChannel : p_block->getOpenPins())
@@ -94,10 +91,10 @@ void updateNetAndCounterAndRelevantChannels(channelID const &chosenChannel, unsi
 }
 
 /* @return true, if the channel was chosen, false otherwise */
-bool processChannelWithIndex(channelID channel, unsigned char indexOfChannel, unsigned char expectedIndex, unsigned char track, std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels,
-                             unsigned char &indexOfChosenChannel, std::map<channelID, std::set<std::string>> const &relevantChannels, std::set<channelID> const &doublyRelevantChannels,
-                             bool &relevantChannelFound, channelID &firstRelChan, unsigned char &indexOfFirstRelChan, std::map<std::string, std::shared_ptr<block>> const &blocks,
-                             std::map<channelID, channelInfo> const &channelInformation)
+bool handleChannelWithIndex(channelID channel, unsigned char indexOfChannel, unsigned char expectedIndex, unsigned char track, std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels,
+                            unsigned char &indexOfChosenChannel, std::map<channelID, std::set<std::string>> const &relevantChannels, std::set<channelID> const &doublyRelevantChannels,
+                            bool &relevantChannelFound, channelID &firstRelChan, unsigned char &indexOfFirstRelChan, std::map<std::string, std::shared_ptr<block>> const &blocks,
+                            std::map<channelID, channelInfo> const &channelInformation)
 {
     assert(expectedIndex > 0);
     unsigned char index = indexOfChannel;
@@ -115,15 +112,14 @@ bool processChannelWithIndex(channelID channel, unsigned char indexOfChannel, un
     }
     else if (!relevantChannelFound && relevantChannels.contains(channel))
     {
+        assert(relevantChannels.find(channel)->second.size() == 1);
         if (doublyRelevantChannels.empty())
         {
-            assert(relevantChannels.find(channel)->second.size() == 1);
             indexOfChosenChannel = index;
             return true;
         }
         else
         {
-            assert(relevantChannels.find(channel)->second.size() == 1);
             firstRelChan = channel;
             indexOfFirstRelChan = index;
             relevantChannelFound = true;
@@ -133,9 +129,9 @@ bool processChannelWithIndex(channelID channel, unsigned char indexOfChannel, un
 }
 
 /* @return true, if the channel was chosen, false otherwise */
-bool processChannelWithoutIndex(channelID channel, unsigned char indexOfChannel, unsigned char track, std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels,
-                                unsigned char &indexOfChosenChannel, std::map<channelID, std::set<std::string>> const &relevantChannels, std::set<channelID> const &doublyRelevantChannels,
-                                bool &relevantChannelFound, channelID &firstRelChan, unsigned char &indexOfFirstRelChan, std::map<std::string, std::shared_ptr<block>> const &blocks)
+bool handleChannelWithoutIndex(channelID channel, unsigned char indexOfChannel, unsigned char track, std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels,
+                               unsigned char &indexOfChosenChannel, std::map<channelID, std::set<std::string>> const &relevantChannels, std::set<channelID> const &doublyRelevantChannels,
+                               bool &relevantChannelFound, channelID &firstRelChan, unsigned char &indexOfFirstRelChan, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     registerIndex(channel, indexOfChannel, channelToIndex, indexToChannels);
 
@@ -153,7 +149,6 @@ bool processChannelWithoutIndex(channelID channel, unsigned char indexOfChannel,
         }
         else
         {
-            assert(relevantChannels.find(channel)->second.size() == 1);
             firstRelChan = channel;
             indexOfFirstRelChan = indexOfChannel;
             relevantChannelFound = true;
@@ -173,21 +168,23 @@ found, the first relevant channel, that was found, is returned. If no doubly rel
 */
 findResult findPin(unsigned char trackToUse, std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels, unsigned char arraySize,
                    unsigned char channelWidth, std::map<channelID, channelInfo> const &channelInformation, std::map<channelID, std::set<std::string>> const &relevantChannels, std::set<channelID> const &doublyRelevantChannels,
-                   std::map<std::string, std::shared_ptr<block>> const &blocks)
+                   std::map<std::string, std::shared_ptr<block>> const &blocks, unsigned char maximumIndex)
 {
     unsigned char currentIndex = constants::indexZero;
     std::set<channelID> fullyProcessedChannels{};
+    unsigned char indexOfChosenChannel{};
+
     bool relevantChannelFound{};
     channelID firstRelChan;
     unsigned char indexOfFirstRelChan{};
-    unsigned char indexOfChosenChannel;
 
     assert(indexToChannels.contains(constants::indexZero));
 
     auto iTCEntry = indexToChannels.find(currentIndex);
-    while (iTCEntry != indexToChannels.end() && (!relevantChannelFound || (!doublyRelevantChannels.empty() && currentIndex < indexOfFirstRelChan + constants::additionalIterationsForDoublyRelevantChannels)))
+    while (currentIndex < maximumIndex && iTCEntry != indexToChannels.end() &&
+           (!relevantChannelFound || (!doublyRelevantChannels.empty() && currentIndex < indexOfFirstRelChan + constants::additionalIterationsForDoublyRelevantChannels)))
     {
-        std::set<channelID> channelsOfCurrentIndex = iTCEntry->second;
+        std::set<channelID> const &channelsOfCurrentIndex = iTCEntry->second;
 
         for (channelID channel : channelsOfCurrentIndex)
         {
@@ -199,17 +196,17 @@ findResult findPin(unsigned char trackToUse, std::map<channelID, unsigned char> 
                 if (auto it = channelToIndex.find(neighbour); it != channelToIndex.end())
                 {
                     assert(it->second >= currentIndex - 1);
-                    bool chosen = processChannelWithIndex(neighbour, it->second, currentIndex + 1, trackToUse, channelToIndex, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels,
-                                                          relevantChannelFound, firstRelChan, indexOfFirstRelChan, blocks, channelInformation);
+                    bool chosen = handleChannelWithIndex(neighbour, it->second, currentIndex + 1, trackToUse, channelToIndex, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels,
+                                                         relevantChannelFound, firstRelChan, indexOfFirstRelChan, blocks, channelInformation);
                     if (chosen)
-                        return findResult(trackToUse, neighbour, indexOfChosenChannel);
+                        return findResult{trackToUse, neighbour, indexOfChosenChannel};
                 }
                 else if (isChannelTrackFree(neighbour, trackToUse, channelInformation))
                 {
-                    bool chosen = processChannelWithoutIndex(neighbour, currentIndex + 1, trackToUse, channelToIndex, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels,
-                                                             relevantChannelFound, firstRelChan, indexOfFirstRelChan, blocks);
+                    bool chosen = handleChannelWithoutIndex(neighbour, currentIndex + 1, trackToUse, channelToIndex, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels,
+                                                            relevantChannelFound, firstRelChan, indexOfFirstRelChan, blocks);
                     if (chosen)
-                        return findResult(trackToUse, neighbour, indexOfChosenChannel);
+                        return findResult{trackToUse, neighbour, indexOfChosenChannel};
                 }
             }
             fullyProcessedChannels.emplace(channel);
@@ -219,64 +216,58 @@ findResult findPin(unsigned char trackToUse, std::map<channelID, unsigned char> 
     }
 
     if (relevantChannelFound)
-        return findResult(trackToUse, firstRelChan, indexOfFirstRelChan);
+        return findResult{trackToUse, firstRelChan, indexOfFirstRelChan};
     else
         return findResult{};
 }
 
-findResult findPinWithoutThreads(std::set<unsigned char> tracksToCheck, std::map<unsigned char, std::map<channelID, unsigned char>> &channelToIndexMaps, std::map<unsigned char, std::map<unsigned char, std::set<channelID>>> &indexToChannelsMaps, unsigned char arraySize,
+findResult findPinForGivenTracks(std::set<unsigned char> const &tracksToCheck, std::map<unsigned char, std::map<channelID, unsigned char>> &channelToIndexMaps, std::map<unsigned char, std::map<unsigned char, std::set<channelID>>> &indexToChannelsMaps, unsigned char arraySize,
                                  unsigned char channelWidth, std::map<channelID, channelInfo> const &channelInformation, std::map<channelID, std::set<std::string>> const &relevantChannels,
                                  std::set<channelID> const &doublyRelevantChannels, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
     findResult bestResult;
-    unsigned char bestIndexOfChannelWithPin = std::numeric_limits<unsigned char>::max();
+    unsigned char bestIndex = std::numeric_limits<unsigned char>::max();
 
     for (unsigned char track : tracksToCheck)
     {
-        std::map<channelID, unsigned char> channelToIndex = channelToIndexMaps.find(track)->second;
-        std::map<unsigned char, std::set<channelID>> indexToChannels = indexToChannelsMaps.find(track)->second;
+        findResult result = findPin(track, channelToIndexMaps.find(track)->second, indexToChannelsMaps.find(track)->second, arraySize, channelWidth, channelInformation, relevantChannels,
+                                    doublyRelevantChannels, blocks, bestIndex);
 
-        findResult result = findPin(track, channelToIndex, indexToChannels, arraySize, channelWidth, channelInformation, relevantChannels, doublyRelevantChannels, blocks);
-
-        channelToIndexMaps.insert_or_assign(track, channelToIndex);
-        indexToChannelsMaps.insert_or_assign(track, indexToChannels);
-
-        if (result.chosenChannel.isInitialized() && result.indexOfChosenChannel < bestIndexOfChannelWithPin)
+        if (result.chosenChannel.isInitialized() && result.indexOfChosenChannel < bestIndex)
         {
-            bestIndexOfChannelWithPin = result.indexOfChosenChannel;
-            bestResult = std::move(result);
+            bestIndex = result.indexOfChosenChannel;
+            bestResult = result;
         }
     }
-    return std::move(bestResult);
+    return bestResult;
 }
 
-void useChannel(channelID channel, unsigned char track, std::shared_ptr<net> const &p_net, std::map<channelID, channelInfo> &channelInformation,
-                std::vector<channelID> &connectionToBlock)
+void updateChannelAndNetAndConnection(channelID channel, unsigned char track, std::shared_ptr<net> const &p_net, std::map<channelID, channelInfo> &channelInformation,
+                                      std::vector<channelID> &connectionToBlock)
 {
     useChannel(channel, channelInformation, track);
     p_net->setUsedTrack(channel, track);
-
     connectionToBlock.push_back(channel);
 }
 
-std::vector<channelID> retrace(findResult result, auto &channelToIndex, auto &indexToChannels,
+std::vector<channelID> retrace(findResult result, std::map<channelID, unsigned char> &channelToIndex, std::map<unsigned char, std::set<channelID>> &indexToChannels,
                                std::shared_ptr<net> const &p_net, std::map<channelID, channelInfo> &channelInformation, unsigned char arraySize, bool previouslyUsedTrack)
 {
     assert(result.chosenChannel.isInitialized());
 
     std::vector<channelID> connectionToBlock{};
 
-    useChannel(result.chosenChannel, result.track, p_net, channelInformation, connectionToBlock);
+    updateChannelAndNetAndConnection(result.chosenChannel, result.track, p_net, channelInformation, connectionToBlock);
 
     channelID currentChannel = result.chosenChannel;
     int expectedIndex = result.indexOfChosenChannel - 1;
 
-    while (expectedIndex >= 1 || (!previouslyUsedTrack && expectedIndex >= 0))
+    while (expectedIndex >= 1)
     {
         assert(indexToChannels.contains(expectedIndex));
         channelID chosenChannel = chooseNeighbouringChannel(currentChannel, arraySize, indexToChannels.find(expectedIndex)->second, result.track, channelInformation);
 
-        useChannel(chosenChannel, result.track, p_net, channelInformation, connectionToBlock);
+        updateChannelAndNetAndConnection(chosenChannel, result.track, p_net, channelInformation, connectionToBlock);
 
         currentChannel = chosenChannel;
         expectedIndex--;
@@ -287,11 +278,16 @@ std::vector<channelID> retrace(findResult result, auto &channelToIndex, auto &in
         channelID chosenChannel = chooseNeighbouringChannelWithUsedTrack(currentChannel, arraySize, indexToChannels.find(constants::indexZero)->second, channelInformation);
         connectionToBlock.push_back(chosenChannel);
     }
+    else
+    {
+        channelID chosenChannel = chooseNeighbouringChannel(currentChannel, arraySize, indexToChannels.find(expectedIndex)->second, result.track, channelInformation);
+        updateChannelAndNetAndConnection(chosenChannel, result.track, p_net, channelInformation, connectionToBlock);
+    }
 
     for (channelID channel : connectionToBlock)
         registerIndex(channel, constants::indexZero, channelToIndex, indexToChannels);
 
-    return connectionToBlock;
+    return std::move(connectionToBlock);
 }
 
 /* @return The amount of nets, that were processed successfully. */
@@ -299,13 +295,12 @@ unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, st
 {
     std::map<channelID, channelInfo> channelInformation = generateChannelInformation(arraySize);
 
-    for (unsigned short netIndex = 0; netIndex < nets.size(); netIndex++)
+    for (std::size_t netIndex = 0; netIndex < nets.size(); netIndex++)
     {
-        std::shared_ptr<net> p_net = nets[netIndex];
-
-        /* printLogMessage("Net " + p_net->getName() + " with blocks to connect: " + listConnectedBlocks(p_net)); */
-
+        std::shared_ptr<net> const &p_net = nets[netIndex];
         channelID sourceChannel = p_net->getSourceChannel();
+        unsigned short blocksReached = 0;
+
         if (isChannelFull(sourceChannel, channelInformation, channelWidth))
             return netIndex;
 
@@ -313,46 +308,38 @@ unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, st
         std::set<channelID> doublyRelevantChannels{};
         /* stores channels, that contain pins of blocks, that are to be connected to the net and for each channel the names of the blocks */
         std::map<channelID, std::set<std::string>> relevantChannels{};
-        findRelevantChannels(relevantChannels, doublyRelevantChannels, p_net, blocks);
+
+        generateRelevantChannels(relevantChannels, doublyRelevantChannels, p_net, blocks);
 
         std::map<unsigned char, std::map<channelID, unsigned char>> channelToIndexMaps{};
-
-        // can contain multiple entries for a channel - only the lowest is of relevance
+        // indexToChannels can contain multiple entries for a channel - only the lowest is of relevance
         std::map<unsigned char, std::map<unsigned char, std::set<channelID>>> indexToChannelsMaps{};
-        unsigned short blocksReached{};
 
         registerSourceChannelIndex(sourceChannel, channelToIndexMaps, indexToChannelsMaps, channelWidth);
 
         if (relevantChannels.contains(sourceChannel))
         {
+            unsigned char optimalTrack = findOptimalTrack(sourceChannel, channelInformation, channelWidth);
 
             std::vector<channelID> connectionToBlock{};
+            updateChannelAndNetAndConnection(sourceChannel, optimalTrack, p_net, channelInformation, connectionToBlock);
 
-            unsigned char optimalTrack = findOptimalTrack(sourceChannel, channelInformation, channelWidth);
-            useChannel(sourceChannel, optimalTrack, p_net, channelInformation, connectionToBlock);
-
-            updateNetAndCounterAndRelevantChannels(sourceChannel, optimalTrack, std::move(connectionToBlock), blocks, p_net, blocksReached, relevantChannels, doublyRelevantChannels);
+            updateNetAndCounterAndRelevantChannels(sourceChannel, optimalTrack, connectionToBlock, blocks, p_net, blocksReached, relevantChannels, doublyRelevantChannels);
         }
 
         while (blocksReached < p_net->getConnectedBlockCount())
         {
-            std::set<unsigned char> previouslyUsedTracks = p_net->getUsedTracksAtSourceChannel();
+            findResult bestResult = findPinForGivenTracks(p_net->findUsedTracksAtSourceChannel(), channelToIndexMaps, indexToChannelsMaps, arraySize, channelWidth, channelInformation,
+                                                          relevantChannels, doublyRelevantChannels, blocks);
 
-            /* findResult bestResult = findPinWithThreads(std::move(previouslyUsedTracks), channelToIndexMaps, indexToChannelsMaps, arraySize, channelWidth, channelInformation, relevantChannels,
-                                                       doublyRelevantChannels, blocks); */
-            findResult bestResult = findPinWithoutThreads(std::move(previouslyUsedTracks), channelToIndexMaps, indexToChannelsMaps, arraySize, channelWidth, channelInformation, relevantChannels, doublyRelevantChannels, blocks);
-
-            bool previouslyUsedTrack;
-
+            bool previouslyUsedTrack = false;
             if (bestResult.chosenChannel.isInitialized())
                 previouslyUsedTrack = true;
             else
             {
-                /* bestResult = findPinWithThreads(std::move(getFreeTracks(sourceChannel, channelInformation, channelWidth)), channelToIndexMaps, indexToChannelsMaps, arraySize, channelWidth,
-                                                channelInformation, relevantChannels, doublyRelevantChannels, blocks); */
-                bestResult = findPinWithoutThreads(std::move(getFreeTracks(sourceChannel, channelInformation, channelWidth)), channelToIndexMaps, indexToChannelsMaps, arraySize, channelWidth, channelInformation, relevantChannels, doublyRelevantChannels, blocks);
-
-                previouslyUsedTrack = false;
+                std::set<unsigned char> freeTracks = getFreeTracks(sourceChannel, channelInformation, channelWidth);
+                bestResult = findPinForGivenTracks(freeTracks, channelToIndexMaps, indexToChannelsMaps, arraySize,
+                                                   channelWidth, channelInformation, relevantChannels, doublyRelevantChannels, blocks);
             }
 
             if (!bestResult.chosenChannel.isInitialized())
@@ -361,7 +348,7 @@ unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, st
             std::vector<channelID> connectionToBlock = retrace(bestResult, channelToIndexMaps.find(bestResult.track)->second,
                                                                indexToChannelsMaps.find(bestResult.track)->second, p_net, channelInformation, arraySize, previouslyUsedTrack);
 
-            updateNetAndCounterAndRelevantChannels(bestResult.chosenChannel, bestResult.track, std::move(connectionToBlock), blocks, p_net, blocksReached, relevantChannels, doublyRelevantChannels);
+            updateNetAndCounterAndRelevantChannels(bestResult.chosenChannel, bestResult.track, connectionToBlock, blocks, p_net, blocksReached, relevantChannels, doublyRelevantChannels);
         }
 
         assert(p_net->allPinsConnected());

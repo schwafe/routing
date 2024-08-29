@@ -22,7 +22,7 @@ std::string argsToString(int argc, char *argv[])
 std::string listConnectedBlocks(std::shared_ptr<net> const &p_net)
 {
     std::string list{};
-    for (std::string connectedBlockName : p_net->getNamesOfConnectedBlocks())
+    for (std::string const &connectedBlockName : p_net->getNamesOfConnectedBlocks())
         list.append(connectedBlockName).append(", ");
     return list.substr(0, list.size() - 2);
 }

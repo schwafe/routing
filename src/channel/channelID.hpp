@@ -5,14 +5,14 @@
 
 class channelID
 {
-    unsigned char x;
-    unsigned char y;
+    unsigned char x{};
+    unsigned char y{};
     char type{}; // x or y - horizontal or vertical - channel
 
 public:
     auto operator<=>(channelID const &rhs) const = default;
-    channelID(unsigned char x, unsigned char y, char type);
-    channelID();
+    channelID::channelID(unsigned char x, unsigned char y, char type) : x(x), y(y), type(type) {};
+    channelID() {};
 
     bool isInitialized() const;
     unsigned char getXCoordinate() const;

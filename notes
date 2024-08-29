@@ -1,5 +1,3 @@
-TODO CMake release option für maximale Geschwindigkeit auswählen, asserts ausschalten und debug logging output entfernen
-
 Erster Ansatz ist eine Rasterverdrahtung.
 
 Inputs:

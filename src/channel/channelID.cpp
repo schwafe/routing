@@ -4,15 +4,6 @@
 #include "../constants.hpp"
 #include "../logging.hpp"
 
-channelID::channelID(unsigned char x, unsigned char y, char type)
-{
-    channelID::x = x;
-    channelID::y = y;
-    channelID::type = type;
-}
-
-channelID::channelID() {}
-
 bool channelID::isInitialized() const
 {
     return type != 0;
@@ -78,5 +69,5 @@ std::set<channelID> channelID::getNeighbours(unsigned char arraySize) const
             neighbours.emplace(x, y + 1, constants::channelTypeY);
         }
     }
-    return neighbours;
+    return std::move(neighbours);
 }

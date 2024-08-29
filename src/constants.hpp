@@ -7,10 +7,14 @@
 
 namespace constants
 {
-        const unsigned char success = 0;
+    const int microsecondsPerMillisecond = 1000;
+    const int millisecondsPerSecond = 1000;
+    
+    const unsigned char success = 0;
     const unsigned char wrongArguments = 1;
     const unsigned char invalidNetFile = 2;
     const unsigned char invalidPlaceFile = 3;
+    const unsigned char channelWidthTooLow = 4;
 
     const std::string correctArgumentsMessage = "Please enter either three or four arguments: the filenames of the .net and .place files to be read and the filename of the .route file to be written and optionally a channel width to try the routing for.";
 

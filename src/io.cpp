@@ -202,10 +202,10 @@ bool readPlace(std::string const &fileName, unsigned char &arraySize, std::map<s
     std::getline(placeFile, line);
 
     int i = 0;
-    do
-    {
-        std::getline(placeFile, line);
+    std::getline(placeFile, line);
 
+    while (!(line.empty() && placeFile.eofbit))
+    {
         while (std::regex_match(line, constants::commentPattern))
         {
             // skip comment lines
@@ -247,8 +247,8 @@ bool readPlace(std::string const &fileName, unsigned char &arraySize, std::map<s
                 netsByNameOfTheSourceBlock.find(blockName)->second->setSourceChannel(sourceChannel);
             }
         }
-
-    } while (!(line.empty() && placeFile.eofbit));
+        std::getline(placeFile, line);
+    }
 
     placeFile.close();
     return true;
@@ -264,7 +264,7 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
 
     unsigned char globalIndex = 0;
 
-    for (std::shared_ptr<net> p_net : globalNets)
+    for (std::shared_ptr<net> const &p_net : globalNets)
     {
         routingFile << "\n\nNet " << +(globalIndex++) << " (" << p_net->getName() << "): global net connecting:\n\n";
 
@@ -277,7 +277,7 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
             routingFile << +constants::irrelevantPinClass;
         routingFile << ".\n";
 
-        for (std::string connectedBlockName : p_net->getNamesOfConnectedBlocks())
+        for (std::string const &connectedBlockName : p_net->getNamesOfConnectedBlocks())
         {
             assert(blocks.contains(connectedBlockName));
             std::shared_ptr<block> p_block = blocks.find(connectedBlockName)->second;
@@ -290,9 +290,9 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
         }
     }
 
-    for (unsigned short index = 0; index < sortedNets.size(); index++)
+    for (int index = 0; index < sortedNets.size(); index++)
     {
-        std::shared_ptr<net> p_net = sortedNets[index];
+        std::shared_ptr<net> const &p_net = sortedNets[index];
         std::set<unsigned char> usedTracksAtSourceChannel{};
 
         routingFile << "\n\nNet " << (index + globalIndex) << " (" << p_net->getName() << ")\n\n";

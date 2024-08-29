@@ -23,7 +23,7 @@ std::map<channelID, channelInfo> generateChannelInformation(unsigned char arrayS
         }
     }
 
-    return channelInformation;
+    return std::move(channelInformation);
 }
 
 bool isChannelFull(channelID const &channel, std::map<channelID, channelInfo> const &channelInformation, unsigned char channelWidth)
@@ -53,7 +53,6 @@ std::set<unsigned char> getFreeTracks(channelID const &channel, std::map<channel
 
 unsigned char findOptimalTrack(channelID const &channel, std::map<channelID, channelInfo> const &channelInformation, unsigned char channelWidth)
 {
-    // TODO could search neighbouring channels for free tracks
     assert(channelInformation.contains(channel));
     assert(!channelInformation.find(channel)->second.isFull(channelWidth));
     return channelInformation.find(channel)->second.findFreeTrack(channelWidth);
@@ -98,12 +97,10 @@ channelID chooseNeighbouringChannelWithUsedTrack(channelID channel, unsigned cha
         channelB = channelID(x, y + 1, constants::channelTypeY);
     }
 
-    // printLogMessage("channel " + channelIDToString(channel) + " channelA " + channelIDToString(channelA) + " channelB " + channelIDToString(channelB));
-
     if (aExists || bExists)
     {
         bool aIsRelevant{}, bIsRelevant{};
-        unsigned char usedTracksA, usedTracksB;
+        unsigned char usedTracksA{}, usedTracksB{};
         if (aExists)
         {
             channelInfo infA = channelInformation.find(channelA)->second;
@@ -182,6 +179,7 @@ channelID chooseNeighbouringChannelWithUsedTrack(channelID channel, unsigned cha
     assert(chosenChannel.isInitialized());
     return chosenChannel;
 }
+
 void addIfValidAndFree(channelID channel, std::set<std::pair<channelID, unsigned char>> &set, std::set<channelID> const &validChannels, unsigned char track,
                        std::map<channelID, channelInfo> const &channelInformation)
 {
@@ -194,6 +192,7 @@ void addIfValidAndFree(channelID channel, std::set<std::pair<channelID, unsigned
             set.emplace(channel, info.getTracksUsed());
     }
 }
+
 channelID chooseNeighbouringChannel(channelID channel, unsigned char arraySize, std::set<channelID> const &validChannels, unsigned char track,
                                     std::map<channelID, channelInfo> const &channelInformation)
 {
@@ -217,12 +216,10 @@ channelID chooseNeighbouringChannel(channelID channel, unsigned char arraySize, 
         channelB = channelID(x, y + 1, constants::channelTypeY);
     }
 
-    // printLogMessage("channel " + channelIDToString(channel) + " channelA " + channelIDToString(channelA) + " channelB " + channelIDToString(channelB));
-
     if (aExists || bExists)
     {
         bool aIsRelevantAndFree{}, bIsRelevantAndFree{};
-        unsigned char usedTracksA, usedTracksB;
+        unsigned char usedTracksA{}, usedTracksB{};
         if (aExists)
         {
             channelInfo infA = channelInformation.find(channelA)->second;

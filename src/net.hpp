@@ -19,8 +19,7 @@ class net
     std::vector<std::pair<std::string, std::pair<unsigned char, std::vector<channelID>>>> connectionsByRoutingOrder{};
 
 public:
-    net(std::string name);
-    net(const net &other);
+    net(std::string name) : name(std::move(name)) {};
 
     std::string getName() const;
     unsigned short getConnectedBlockCount() const;
@@ -29,7 +28,7 @@ public:
     std::set<std::string> getNamesOfConnectedBlocks() const;
     std::vector<std::pair<std::string, std::pair<unsigned char, std::vector<channelID>>>> getConnectionsByRoutingOrder() const;
 
-    std::set<unsigned char> getUsedTracksAtSourceChannel() const;
+    std::set<unsigned char> findUsedTracksAtSourceChannel() const;
     bool usedChannelTrackCombination(const channelID &channel, unsigned char track) const;
     bool allPinsConnected() const;
     unsigned char chooseUsedTrack(const channelID &channel, unsigned char optimalTrack) const;

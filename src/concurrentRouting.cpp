@@ -1,19 +1,18 @@
 #include "concurrentRouting.hpp"
 #include "routing.hpp"
+#include "logging.hpp"
 
 #include <cassert>
 #include <thread>
 #include <future>
 
-void findPin(unsigned char trackToUse, unsigned char channelWidth, unsigned char arraySize, std::map<channelID, unsigned char> cTI,
-               std::map<unsigned char, std::set<channelID>> iTC, std::map<channelID, channelInfo> const &channelInformation,
-               std::map<channelID, std::set<std::string>> const &relevantChannels, std::set<channelID> const &doublyRelevantChannels,
-               std::map<std::string, std::shared_ptr<block>> const &blocks, std::promise<findResult> promise)
+void findPin(unsigned char trackToUse, unsigned char channelWidth, unsigned char arraySize, std::map<channelID, unsigned char> &channelToIndex,
+             std::map<unsigned char, std::set<channelID>> &indexToChannels, std::map<channelID, channelInfo> const &channelInformation,
+             std::map<channelID, std::set<std::string>> const &relevantChannels, std::set<channelID> const &doublyRelevantChannels,
+             std::map<std::string, std::shared_ptr<block>> const &blocks, std::promise<findResult> promise)
 {
-    std::map<channelID, unsigned char> channelToIndex = std::move(cTI);
-    std::map<unsigned char, std::set<channelID>> indexToChannels = std::move(iTC);
     channelID chosenChannel = constants::uninitializedChannel;
-    unsigned char indexOfChosenChannel;
+    unsigned char indexOfChosenChannel{};
 
     bool chosen{};
     unsigned char currentIndex = constants::indexZero;
@@ -39,8 +38,8 @@ void findPin(unsigned char trackToUse, unsigned char channelWidth, unsigned char
                 if (auto it = channelToIndex.find(neighbour); it != channelToIndex.end())
                 {
                     assert(it->second >= currentIndex - 1);
-                    chosen = processChannelWithIndex(neighbour, it->second, currentIndex + 1, trackToUse, channelToIndex, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels,
-                                                     relevantChannelFound, firstRelChan, indexOfFirstRelChan, blocks, channelInformation);
+                    chosen = handleChannelWithIndex(neighbour, it->second, currentIndex + 1, trackToUse, channelToIndex, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels,
+                                                    relevantChannelFound, firstRelChan, indexOfFirstRelChan, blocks, channelInformation);
                     if (chosen)
                     {
                         chosenChannel = neighbour;
@@ -49,8 +48,8 @@ void findPin(unsigned char trackToUse, unsigned char channelWidth, unsigned char
                 }
                 else if (isChannelTrackFree(neighbour, trackToUse, channelInformation))
                 {
-                    chosen = processChannelWithoutIndex(neighbour, currentIndex + 1, trackToUse, channelToIndex, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels,
-                                                             relevantChannelFound, firstRelChan, indexOfFirstRelChan, blocks);
+                    chosen = handleChannelWithoutIndex(neighbour, currentIndex + 1, trackToUse, channelToIndex, indexToChannels, indexOfChosenChannel, relevantChannels, doublyRelevantChannels,
+                                                       relevantChannelFound, firstRelChan, indexOfFirstRelChan, blocks);
                     if (chosen)
                     {
                         chosenChannel = neighbour;
@@ -74,53 +73,48 @@ void findPin(unsigned char trackToUse, unsigned char channelWidth, unsigned char
     {
         assert(relevantChannels.find(firstRelChan)->second.size() == 1);
         indexOfChosenChannel = indexOfFirstRelChan;
-        chosenChannel = std::move(firstRelChan);
+        chosenChannel = firstRelChan;
     }
 
-    promise.set_value(findResult{trackToUse, std::move(channelToIndex), std::move(indexToChannels), std::move(chosenChannel), std::move(indexOfChosenChannel)});
+    promise.set_value(findResult{trackToUse, chosenChannel, indexOfChosenChannel});
 }
 
-findResult findPinWithThreads(std::set<unsigned char> tracksToCheck, std::map<unsigned char, std::map<channelID, unsigned char>> &channelToIndexMaps, std::map<unsigned char, std::map<unsigned char, std::set<channelID>>> &indexToChannelsMaps, unsigned char arraySize,
-                             unsigned char channelWidth, std::map<channelID, channelInfo> const &channelInformation, std::map<channelID, std::set<std::string>> const &relevantChannels,
-                             std::set<channelID> const &doublyRelevantChannels, std::map<std::string, std::shared_ptr<block>> const &blocks)
+findResult findPinWithThreads(std::set<unsigned char> const &tracksToCheck, std::map<unsigned char, std::map<channelID, unsigned char>> &channelToIndexMaps, std::map<unsigned char, std::map<unsigned char, std::set<channelID>>> &indexToChannelsMaps, unsigned char arraySize,
+                              unsigned char channelWidth, std::map<channelID, channelInfo> const &channelInformation, std::map<channelID, std::set<std::string>> const &relevantChannels,
+                              std::set<channelID> const &doublyRelevantChannels, std::map<std::string, std::shared_ptr<block>> const &blocks)
 {
-    findResult bestResult;
-    unsigned char bestIndexOfChannelWithPin = std::numeric_limits<unsigned char>::max();
+    std::vector<std::thread> threads;
+    std::vector<std::future<findResult>> futures;
 
-    std::thread threads[tracksToCheck.size()];
-    std::future<findResult> futures[tracksToCheck.size()];
+    std::map<channelID, unsigned char> channelToIndex0 = channelToIndexMaps.find(0)->second;
 
-    unsigned char threadCount = 0;
     for (unsigned char track : tracksToCheck)
     {
-        std::map<channelID, unsigned char> channelToIndex = channelToIndexMaps.find(track)->second;
-        std::map<unsigned char, std::set<channelID>> indexToChannels = indexToChannelsMaps.find(track)->second;
-        
+        std::map<channelID, unsigned char> &channelToIndex = channelToIndexMaps.find(track)->second;
+        std::map<unsigned char, std::set<channelID>> &indexToChannels = indexToChannelsMaps.find(track)->second;
+
         std::promise<findResult> promise;
         std::future<findResult> future = promise.get_future();
 
-        threads[threadCount] = std::thread(findPin, track, channelWidth, arraySize, std::move(channelToIndex), std::move(indexToChannels), std::cref(channelInformation), std::cref(relevantChannels), std::cref(doublyRelevantChannels), std::cref(blocks), std::move(promise));
-        futures[threadCount] = std::move(future);
-        threadCount++;
+        threads.push_back(std::thread(findPin, track, channelWidth, arraySize, std::ref(channelToIndex), std::ref(indexToChannels), std::cref(channelInformation), std::cref(relevantChannels), std::cref(doublyRelevantChannels), std::cref(blocks), std::move(promise)));
+        futures.push_back(std::move(future));
     }
 
-    threadCount = 0;
-    for (unsigned char track : tracksToCheck)
+    findResult bestResult;
+    unsigned char bestIndexOfChannelWithPin = std::numeric_limits<unsigned char>::max();
+
+    for (int threadCount = 0; threadCount < threads.size(); threadCount++)
     {
         findResult result = futures[threadCount].get();
 
-        channelToIndexMaps.insert_or_assign(track, result.channelToIndex);
-        indexToChannelsMaps.insert_or_assign(track, result.indexToChannels);
-
         if (result.chosenChannel.isInitialized() && result.indexOfChosenChannel < bestIndexOfChannelWithPin)
         {
-            bestIndexOfChannelWithPin = result.indexOfChosenChannel;
-            bestResult = std::move(result);
+            bestResult = result;
+            bestIndexOfChannelWithPin = bestResult.indexOfChosenChannel;
         }
 
         threads[threadCount].join();
-        threadCount++;
     }
 
-    return std::move(bestResult);
+    return bestResult;
 }

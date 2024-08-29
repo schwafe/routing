@@ -2,19 +2,6 @@
 
 #include <cassert>
 
-net::net(std::string name)
-{
-    net::name = name;
-}
-
-net::net(const net &other)
-{
-    name = other.name;
-    sourceBlockName = other.sourceBlockName;
-    sourceChannel = other.sourceChannel;
-    namesOfConnectedBlocks = other.namesOfConnectedBlocks;
-}
-
 std::string net::getName() const
 {
     return name;
@@ -35,7 +22,7 @@ unsigned short net::getConnectedBlockCount() const
     return namesOfConnectedBlocks.size();
 }
 
-std::set<unsigned char> net::getUsedTracksAtSourceChannel() const
+std::set<unsigned char> net::findUsedTracksAtSourceChannel() const
 {
     std::set<unsigned char> usedTracksAtSourceChannel{};
     auto range = usedTracks.equal_range(sourceChannel);
@@ -43,7 +30,7 @@ std::set<unsigned char> net::getUsedTracksAtSourceChannel() const
     {
         usedTracksAtSourceChannel.insert(it->second);
     }
-    return usedTracksAtSourceChannel;
+    return std::move(usedTracksAtSourceChannel);
 }
 
 bool net::usedChannelTrackCombination(const channelID &channel, unsigned char track) const
@@ -93,13 +80,12 @@ void net::setSourceChannel(channelID sourceChannel)
 
 void net::setSourceBlockName(std::string sourceBlockName)
 {
-    net::sourceBlockName = sourceBlockName;
+    net::sourceBlockName = std::move(sourceBlockName);
 }
 
 void net::addConnectedBlock(std::string connectedBlockName)
 {
-    assert(!namesOfConnectedBlocks.contains(connectedBlockName));
-    namesOfConnectedBlocks.emplace(connectedBlockName);
+    namesOfConnectedBlocks.emplace(std::move(connectedBlockName));
 }
 
 void net::setUsedTrack(channelID channel, unsigned char track)
@@ -109,6 +95,5 @@ void net::setUsedTrack(channelID channel, unsigned char track)
 
 void net::setConnection(std::string connectedBlockName, unsigned char track, std::vector<channelID> connectionToBlock)
 {
-    assert(namesOfConnectedBlocks.contains(connectedBlockName));
-    connectionsByRoutingOrder.emplace_back(connectedBlockName, std::move(std::make_pair(track, connectionToBlock)));
+    connectionsByRoutingOrder.emplace_back(std::move(connectedBlockName), std::move(std::make_pair(track, std::move(connectionToBlock))));
 }
