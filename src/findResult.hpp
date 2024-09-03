@@ -7,7 +7,7 @@ struct findResult
 {
     unsigned char track{};
     channelID chosenChannel;
-    unsigned char indexOfChosenChannel{};
+    unsigned char indexOfChosenChannel = std::numeric_limits<unsigned char>::max();
 
 public:
     findResult() : chosenChannel(constants::uninitializedChannel) {};

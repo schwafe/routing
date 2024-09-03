@@ -329,21 +329,23 @@ unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, st
 
         while (blocksReached < p_net->getConnectedBlockCount())
         {
+            bool previouslyUsedTrack = false;
             findResult bestResult = findPinForGivenTracks(p_net->findUsedTracksAtSourceChannel(), channelToIndexMaps, indexToChannelsMaps, arraySize, channelWidth, channelInformation,
                                                           relevantChannels, doublyRelevantChannels, blocks);
 
-            bool previouslyUsedTrack = false;
-            if (bestResult.chosenChannel.isInitialized())
-                previouslyUsedTrack = true;
-            else
-            {
-                std::set<unsigned char> freeTracks = getFreeTracks(sourceChannel, channelInformation, channelWidth);
-                bestResult = findPinForGivenTracks(freeTracks, channelToIndexMaps, indexToChannelsMaps, arraySize,
-                                                   channelWidth, channelInformation, relevantChannels, doublyRelevantChannels, blocks);
-            }
+            std::set<unsigned char> freeTracks = getFreeTracks(sourceChannel, channelInformation, channelWidth);
+            findResult bestResultNewTrack = findPinForGivenTracks(freeTracks, channelToIndexMaps, indexToChannelsMaps, arraySize,
+                                                                  channelWidth, channelInformation, relevantChannels, doublyRelevantChannels, blocks);
 
-            if (!bestResult.chosenChannel.isInitialized())
+            if (!bestResult.chosenChannel.isInitialized() && !bestResultNewTrack.chosenChannel.isInitialized())
                 return netIndex;
+            else if (bestResultNewTrack.indexOfChosenChannel * constants::ratioNewToOld < bestResult.indexOfChosenChannel)
+            {
+                previouslyUsedTrack = false;
+                bestResult = bestResultNewTrack;
+            }
+            else
+                previouslyUsedTrack = true;
 
             std::vector<channelID> connectionToBlock = retrace(bestResult, channelToIndexMaps.find(bestResult.track)->second,
                                                                indexToChannelsMaps.find(bestResult.track)->second, p_net, channelInformation, arraySize, previouslyUsedTrack);
