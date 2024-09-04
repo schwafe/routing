@@ -18,7 +18,7 @@ public:
     unsigned char getXCoordinate() const;
     unsigned char getYCoordinate() const;
     char getType() const;
-    std::set<channelID> getNeighbours(unsigned char arraySize) const;
+    std::set<channelID> generateNeighbours(unsigned char arraySize) const;
 };
 
 #endif

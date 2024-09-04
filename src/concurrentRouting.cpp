@@ -33,7 +33,7 @@ void findPin(unsigned char trackToUse, unsigned char channelWidth, unsigned char
             if (fullyProcessedChannels.contains(channel))
                 continue;
 
-            for (channelID neighbour : channel.getNeighbours(arraySize))
+            for (channelID neighbour : channel.generateNeighbours(arraySize))
             {
                 if (auto it = channelToIndex.find(neighbour); it != channelToIndex.end())
                 {

@@ -24,7 +24,7 @@ char channelID::getType() const
     return type;
 }
 
-std::set<channelID> channelID::getNeighbours(unsigned char arraySize) const
+std::set<channelID> channelID::generateNeighbours(unsigned char arraySize) const
 {
     std::set<channelID> neighbours{};
     if (type == constants::channelTypeX)
