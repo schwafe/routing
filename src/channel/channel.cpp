@@ -74,7 +74,7 @@ void addIfValid(channelID channel, std::set<std::pair<channelID, unsigned char>>
     }
 }
 
-channelID chooseNeighbouringChannelWithUsedTrack(channelID channel, unsigned char arraySize, std::set<channelID> const &validChannels,
+channelID chooseNeighbouringChannel(channelID channel, unsigned char arraySize, std::set<channelID> const &validChannels,
                                                  std::map<channelID, channelInfo> const &channelInformation)
 {
     unsigned char x = channel.getXCoordinate();
@@ -159,125 +159,6 @@ channelID chooseNeighbouringChannelWithUsedTrack(channelID channel, unsigned cha
         {
             addIfValid(channelID{(unsigned char)(x + 1), (unsigned char)(y - 1), constants::channelTypeX}, neighbours, validChannels, channelInformation);
             addIfValid(channelID{(unsigned char)(x + 1), y, constants::channelTypeX}, neighbours, validChannels, channelInformation);
-        }
-    }
-
-    assert(!neighbours.empty());
-
-    channelID chosenChannel;
-    unsigned char lowestAmount = std::numeric_limits<unsigned char>::max();
-
-    for (std::pair<channelID, unsigned char> neighbourPair : neighbours)
-    {
-        if (neighbourPair.second < lowestAmount)
-        {
-            lowestAmount = neighbourPair.second;
-            chosenChannel = neighbourPair.first;
-        }
-    }
-
-    assert(chosenChannel.isInitialized());
-    return chosenChannel;
-}
-
-void addIfValidAndFree(channelID channel, std::set<std::pair<channelID, unsigned char>> &set, std::set<channelID> const &validChannels, unsigned char track,
-                       std::map<channelID, channelInfo> const &channelInformation)
-{
-    if (validChannels.contains(channel))
-    {
-        assert(channelInformation.contains(channel));
-        channelInfo info = channelInformation.find(channel)->second;
-
-        if (info.isTrackFree(track))
-            set.emplace(channel, info.getTracksUsed());
-    }
-}
-
-channelID chooseNeighbouringChannel(channelID channel, unsigned char arraySize, std::set<channelID> const &validChannels, unsigned char track,
-                                    std::map<channelID, channelInfo> const &channelInformation)
-{
-    unsigned char x = channel.getXCoordinate();
-    unsigned char y = channel.getYCoordinate();
-
-    channelID channelA{}, channelB{};
-    bool aExists{}, bExists{};
-    if (channel.getType() == constants::channelTypeX)
-    {
-        aExists = x > 1;
-        channelA = channelID(x - 1, y, constants::channelTypeX);
-        bExists = x < arraySize;
-        channelB = channelID(x + 1, y, constants::channelTypeX);
-    }
-    else
-    {
-        aExists = y > 1;
-        channelA = channelID(x, y - 1, constants::channelTypeY);
-        bExists = y < arraySize;
-        channelB = channelID(x, y + 1, constants::channelTypeY);
-    }
-
-    if (aExists || bExists)
-    {
-        bool aIsRelevantAndFree{}, bIsRelevantAndFree{};
-        unsigned char usedTracksA{}, usedTracksB{};
-        if (aExists)
-        {
-            channelInfo infA = channelInformation.find(channelA)->second;
-            usedTracksA = infA.getTracksUsed();
-
-            aIsRelevantAndFree = infA.isTrackFree(track) && validChannels.contains(channelA);
-        }
-
-        if (bExists)
-        {
-            channelInfo infB = channelInformation.find(channelB)->second;
-            usedTracksB = infB.getTracksUsed();
-
-            bIsRelevantAndFree = infB.isTrackFree(track) && validChannels.contains(channelB);
-        }
-
-        if (!aIsRelevantAndFree && bIsRelevantAndFree)
-            return channelB;
-        else if (!bIsRelevantAndFree && aIsRelevantAndFree)
-            return channelA;
-        else if (aIsRelevantAndFree && bIsRelevantAndFree)
-        {
-            if (usedTracksA <= usedTracksB)
-                return channelA;
-            else
-                return channelB;
-        }
-    }
-
-    // no neighbour of the same type (horizontal/vertical) was valid, so now neighbours of the other type are searched
-
-    std::set<std::pair<channelID, unsigned char>> neighbours{};
-    if (channel.getType() == constants::channelTypeX)
-    {
-        if (y > 0)
-        {
-            addIfValidAndFree(channelID{x, y, constants::channelTypeY}, neighbours, validChannels, track, channelInformation);
-            addIfValidAndFree(channelID{(unsigned char)(x - 1), y, constants::channelTypeY}, neighbours, validChannels, track, channelInformation);
-        }
-
-        if (y < arraySize)
-        {
-            addIfValidAndFree(channelID{(unsigned char)(x - 1), (unsigned char)(y + 1), constants::channelTypeY}, neighbours, validChannels, track, channelInformation);
-            addIfValidAndFree(channelID{x, (unsigned char)(y + 1), constants::channelTypeY}, neighbours, validChannels, track, channelInformation);
-        }
-    }
-    else
-    {
-        if (x > 0)
-        {
-            addIfValidAndFree(channelID{x, (unsigned char)(y - 1), constants::channelTypeX}, neighbours, validChannels, track, channelInformation);
-            addIfValidAndFree(channelID{x, y, constants::channelTypeX}, neighbours, validChannels, track, channelInformation);
-        }
-
-        if (x < arraySize)
-        {
-            addIfValidAndFree(channelID{(unsigned char)(x + 1), (unsigned char)(y - 1), constants::channelTypeX}, neighbours, validChannels, track, channelInformation);
-            addIfValidAndFree(channelID{(unsigned char)(x + 1), y, constants::channelTypeX}, neighbours, validChannels, track, channelInformation);
         }
     }
 

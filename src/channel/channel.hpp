@@ -12,9 +12,7 @@ bool isChannelTrackFree(channelID const &channel, unsigned char track, std::map<
 std::set<unsigned char> getFreeTracks(channelID const &channel, std::map<channelID, channelInfo> const &channelInformation, unsigned char channelWidth);
 unsigned char findOptimalTrack(channelID const &channel, std::map<channelID, channelInfo> const &channelInformation, unsigned char channelWidth);
 void useChannel(channelID const &channel, std::map<channelID, channelInfo> &channelInformation, unsigned char track);
-channelID chooseNeighbouringChannel(channelID channel, unsigned char arraySize, std::set<channelID> const &validChannels, unsigned char track,
-                                    std::map<channelID, channelInfo> const &channelInformation);
-channelID chooseNeighbouringChannelWithUsedTrack(channelID channel, unsigned char arraySize, std::set<channelID> const &validChannels,
+channelID chooseNeighbouringChannel(channelID channel, unsigned char arraySize, std::set<channelID> const &validChannels,
                                                  std::map<channelID, channelInfo> const &channelInformation);
 
 #endif
