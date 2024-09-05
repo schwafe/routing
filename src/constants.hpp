@@ -39,13 +39,6 @@ namespace constants
 
     const std::regex numberPattern("^\\d+$");
 
-    const char channelTypeY = 'Y';
-    const char channelTypeX = 'X';
-
-    const char blockTypeCLB = 'C';
-    const char blockTypeInput = 'I';
-    const char blockTypeOutput = 'O';
-
     const unsigned char inputPinClass = 0;
     const unsigned char outputPinClass = 1;
     const unsigned char clockPinClass = 2;
@@ -57,7 +50,6 @@ namespace constants
     const unsigned char outputPinNumber = 4;
 
     const unsigned char indexZero = 0;
-    const channelID uninitializedChannel = channelID{};
 }
 
 #endif

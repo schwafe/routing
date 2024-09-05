@@ -9,36 +9,36 @@ void block::initialise(unsigned char x, unsigned char y, unsigned char subblockN
     block::subblockNumber = subblockNumber;
 
     std::set<channelID> channels{};
-    if (type == constants::blockTypeCLB)
+    if (type == blockType::CLB)
     {
-        channels.emplace(x, y, constants::channelTypeX);
-        channels.emplace(x, y, constants::channelTypeY);
-        channels.emplace(x, y - 1, constants::channelTypeX);
-        channels.emplace(x - 1, y, constants::channelTypeY);
+        channels.emplace(x, y, channelType::horizontal);
+        channels.emplace(x, y, channelType::vertical);
+        channels.emplace(x, y - 1, channelType::horizontal);
+        channels.emplace(x - 1, y, channelType::vertical);
     }
     else
     {
         if (x == 0)
         {
-            channels.emplace(x, y, constants::channelTypeY);
+            channels.emplace(x, y, channelType::vertical);
         }
         else if (y == 0)
         {
-            channels.emplace(x, y, constants::channelTypeX);
+            channels.emplace(x, y, channelType::horizontal);
         }
         else if (x > y)
         {
-            channels.emplace(x - 1, y, constants::channelTypeY);
+            channels.emplace(x - 1, y, channelType::vertical);
         }
         else
         {
-            channels.emplace(x, y - 1, constants::channelTypeX);
+            channels.emplace(x, y - 1, channelType::horizontal);
         }
     }
     block::openPins = channels;
 }
 
-char block::getType() const
+blockType block::getType() const
 {
     return type;
 }
@@ -78,7 +78,7 @@ unsigned char block::determinePinNumber(channelID const &channel) const
         }
         else
         {
-            if (channel.getType() == constants::channelTypeX)
+            if (channel.getType() == channelType::horizontal)
             {
                 number = constants::upperInputPinNumber;
             }

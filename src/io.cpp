@@ -19,7 +19,7 @@ bool readNet(std::string const &fileName, std::map<std::string, std::shared_ptr<
         {
             blockName = matches[1];
 
-            std::shared_ptr<block> p_block = std::make_shared<block>(constants::blockTypeCLB);
+            std::shared_ptr<block> p_block = std::make_shared<block>(blockType::CLB);
             blocks.insert(std::make_pair(blockName, p_block));
 
             std::getline(netFile, line);
@@ -82,7 +82,7 @@ bool readNet(std::string const &fileName, std::map<std::string, std::shared_ptr<
         else if (std::regex_match(line, matches, constants::outputPattern))
         {
             blockName = matches[1];
-            blocks.insert(std::make_pair(blockName, std::make_shared<block>(constants::blockTypeOutput)));
+            blocks.insert(std::make_pair(blockName, std::make_shared<block>(blockType::output)));
 
             std::getline(netFile, line);
             std::regex_match(line, matches, constants::padPinPattern);
@@ -106,7 +106,7 @@ bool readNet(std::string const &fileName, std::map<std::string, std::shared_ptr<
         else if (std::regex_match(line, matches, constants::inputPattern))
         {
             blockName = matches[1];
-            std::shared_ptr<block> p_block = std::make_shared<block>(constants::blockTypeInput);
+            std::shared_ptr<block> p_block = std::make_shared<block>(blockType::input);
 
             blocks.insert(std::make_pair(blockName, p_block));
 
@@ -223,24 +223,24 @@ bool readPlace(std::string const &fileName, unsigned char &arraySize, std::map<s
             std::shared_ptr<block> p_block = blocks.find(blockName)->second;
             p_block->initialise(x, y, std::stoi(matches[4]));
 
-            if (p_block->getType() != constants::blockTypeOutput)
+            if (p_block->getType() != blockType::output)
             {
                 channelID sourceChannel;
-                if (p_block->getType() == constants::blockTypeCLB || y == arraySize + 1)
+                if (p_block->getType() == blockType::CLB || y == arraySize + 1)
                 {
-                    sourceChannel = channelID(x, y - 1, constants::channelTypeX);
+                    sourceChannel = channelID(x, y - 1, channelType::horizontal);
                 }
                 else if (x == 0)
                 {
-                    sourceChannel = channelID(x, y, constants::channelTypeY);
+                    sourceChannel = channelID(x, y, channelType::vertical);
                 }
                 else if (x == arraySize + 1)
                 {
-                    sourceChannel = channelID(x - 1, y, constants::channelTypeY);
+                    sourceChannel = channelID(x - 1, y, channelType::vertical);
                 }
                 else if (y == 0)
                 {
-                    sourceChannel = channelID(x, y, constants::channelTypeX);
+                    sourceChannel = channelID(x, y, channelType::horizontal);
                 }
 
                 assert(netsByNameOfTheSourceBlock.contains(blockName));
@@ -271,7 +271,7 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
         assert(blocks.contains(p_net->getSourceBlockName()));
         std::shared_ptr<block> p_block = blocks.find(p_net->getSourceBlockName())->second;
         routingFile << "Block " << p_net->getSourceBlockName() << " at (" << +p_block->getX() << ", " << +p_block->getY() << "), Pin class ";
-        if (p_block->getType() == constants::blockTypeCLB)
+        if (p_block->getType() == blockType::CLB)
             routingFile << +constants::clockPinClass;
         else
             routingFile << +constants::irrelevantPinClass;
@@ -282,7 +282,7 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
             assert(blocks.contains(connectedBlockName));
             std::shared_ptr<block> p_block = blocks.find(connectedBlockName)->second;
             routingFile << "Block " << connectedBlockName << " at (" << +p_block->getX() << ", " << +p_block->getY() << "), Pin class ";
-            if (p_block->getType() == constants::blockTypeCLB)
+            if (p_block->getType() == blockType::CLB)
                 routingFile << +constants::clockPinClass;
             else
                 routingFile << +constants::irrelevantPinClass;
@@ -302,7 +302,7 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
         unsigned char subblockNumber = p_sourceBlock->getSubblockNumber();
 
         routingFile << "SOURCE (" << +p_sourceBlock->getX() << "," << +p_sourceBlock->getY() << ")  ";
-        if (p_sourceBlock->getType() == constants::blockTypeCLB)
+        if (p_sourceBlock->getType() == blockType::CLB)
             routingFile << "Class: " << +constants::outputPinClass << "  \n";
         else
             routingFile << "Pad: " << +subblockNumber << "  \n";
@@ -327,7 +327,7 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
                     if (!usedTracksAtSourceChannel.contains(track))
                     {
                         routingFile << "  OPIN (" << +p_sourceBlock->getX() << "," << +p_sourceBlock->getY() << ")  ";
-                        if (p_sourceBlock->getType() == constants::blockTypeCLB)
+                        if (p_sourceBlock->getType() == blockType::CLB)
                             routingFile << "Pin: " << +constants::outputPinNumber << "  \n";
                         else
                             routingFile << "Pad: " << +subblockNumber << "  \n";
@@ -339,7 +339,7 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
                 routingFile << " CHAN" << channel.getType() << " (" << +channel.getXCoordinate() << ',' << +channel.getYCoordinate() << ")  Track: " << +track << "  \n";
             }
 
-            if (p_block->getType() == constants::blockTypeCLB)
+            if (p_block->getType() == blockType::CLB)
             {
                 routingFile << "  IPIN (" << +p_block->getX() << ',' << +p_block->getY() << ")  Pin: " << +p_block->determinePinNumber(channel) << "  \n";
                 routingFile << "  SINK (" << +p_block->getX() << ',' << +p_block->getY() << ")  Class: 0  \n";

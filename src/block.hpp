@@ -5,19 +5,26 @@
 #include <limits>
 #include "channel/channel.hpp"
 
+enum blockType
+{
+    CLB,
+    input,
+    output
+};
+
 class block
 {
-    char type; // C for CLB, P for pad
+    blockType type;
     unsigned char x{};
     unsigned char y{};
-    unsigned char subblockNumber{}; // only relevant if type is pad
+    unsigned char subblockNumber{}; // only relevant if type is input or output
     std::set<channelID> openPins;
 
 public:
-    block(char type) : type(type) {};
+    block(blockType type) : type(type) {};
     void initialise(unsigned char x, unsigned char y, unsigned char subblockNumber);
 
-    char getType() const;
+    blockType getType() const;
     unsigned char getX() const;
     unsigned char getY() const;
     unsigned char getSubblockNumber() const;

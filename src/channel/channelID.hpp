@@ -3,21 +3,26 @@
 
 #include <set>
 
+enum channelType
+{
+    horizontal,
+    vertical
+};
+
 class channelID
 {
     unsigned char x{};
     unsigned char y{};
-    char type{}; // x or y - horizontal or vertical - channel
+    channelType type{};
 
 public:
     auto operator<=>(channelID const &rhs) const = default;
-    channelID(unsigned char x, unsigned char y, char type) : x(x), y(y), type(type) {};
+    channelID(unsigned char x, unsigned char y, channelType type) : x(x), y(y), type(type) {};
     channelID() {};
 
-    bool isInitialized() const;
     unsigned char getXCoordinate() const;
     unsigned char getYCoordinate() const;
-    char getType() const;
+    channelType getType() const;
     std::set<channelID> generateNeighbours(unsigned char arraySize) const;
 };
 

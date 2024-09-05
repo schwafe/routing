@@ -4,7 +4,11 @@
 
 std::string channelIDToString(channelID const &channel)
 {
-    return "(" + std::to_string(+channel.getXCoordinate()) + ',' + std::to_string(+channel.getYCoordinate()) + ',' + channel.getType() + ')';
+    std::string msg = "(" + std::to_string(+channel.getXCoordinate()) + ',' + std::to_string(+channel.getYCoordinate()) + ',';
+    if (channel.getType() == channelType::horizontal)
+        return msg + "X)";
+    else
+        return msg + "Y)";
 }
 
 std::string argsToString(int argc, char *argv[])

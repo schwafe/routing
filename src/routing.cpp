@@ -143,7 +143,7 @@ findResult findPinForGivenTracks(std::set<unsigned char> const &tracksToCheck, s
         findResult result = findPin(track, indexToChannelsVectors[track], arraySize, channelWidth, channelInformation, relevantChannels,
                                     doublyRelevantChannels, blocks, maximumIndex);
 
-        if (result.chosenChannel.isInitialized() && result.indexOfChosenChannel < bestResult.indexOfChosenChannel)
+        if (result.isInitialized() && result.indexOfChosenChannel < bestResult.indexOfChosenChannel)
             bestResult = result;
     }
     return bestResult;
@@ -160,7 +160,7 @@ void updateChannelAndNetAndConnection(channelID channel, unsigned char track, st
 std::vector<channelID> retrace(findResult result, std::map<unsigned char, std::set<channelID>> &indexToChannels,
                                std::shared_ptr<net> const &p_net, std::map<channelID, channelInfo> &channelInformation, unsigned char arraySize, bool previouslyUsedTrack)
 {
-    assert(result.chosenChannel.isInitialized());
+    assert(result.isInitialized());
 
     std::vector<channelID> connectionToBlock{};
 
@@ -239,14 +239,14 @@ unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, st
             findResult bestResult = findPinForGivenTracks(p_net->findUsedTracksAtSourceChannel(), indexToChannelsVectors, arraySize, channelWidth, channelInformation,
                                                           relevantChannels, doublyRelevantChannels, blocks, maximumIndex);
 
-            if (bestResult.chosenChannel.isInitialized())
+            if (bestResult.isInitialized())
                 maximumIndex = bestResult.indexOfChosenChannel / 2;
 
             std::set<unsigned char> freeTracks = getFreeTracks(sourceChannel, channelInformation, channelWidth);
             findResult bestResultNewTrack = findPinForGivenTracks(freeTracks, indexToChannelsVectors, arraySize,
                                                                   channelWidth, channelInformation, relevantChannels, doublyRelevantChannels, blocks, maximumIndex);
 
-            if (!bestResult.chosenChannel.isInitialized() && !bestResultNewTrack.chosenChannel.isInitialized())
+            if (!bestResult.isInitialized() && !bestResultNewTrack.isInitialized())
                 return netIndex;
             else if (constants::ratioNewToOld * bestResultNewTrack.indexOfChosenChannel < bestResult.indexOfChosenChannel)
             {

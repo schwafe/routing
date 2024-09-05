@@ -107,7 +107,7 @@ findResult findPinWithThreads(std::set<unsigned char> const &tracksToCheck, std:
     {
         findResult result = futures[threadCount].get();
 
-        if (result.chosenChannel.isInitialized() && result.indexOfChosenChannel < bestIndexOfChannelWithPin)
+        if (result.isInitialized() && result.indexOfChosenChannel < bestIndexOfChannelWithPin)
         {
             bestResult = result;
             bestIndexOfChannelWithPin = bestResult.indexOfChosenChannel;

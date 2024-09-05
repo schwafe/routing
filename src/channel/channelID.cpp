@@ -4,11 +4,6 @@
 #include "../constants.hpp"
 #include "../logging.hpp"
 
-bool channelID::isInitialized() const
-{
-    return type != 0;
-}
-
 unsigned char channelID::getXCoordinate() const
 {
     return x;
@@ -19,7 +14,7 @@ unsigned char channelID::getYCoordinate() const
     return y;
 }
 
-char channelID::getType() const
+channelType channelID::getType() const
 {
     return type;
 }
@@ -27,46 +22,46 @@ char channelID::getType() const
 std::set<channelID> channelID::generateNeighbours(unsigned char arraySize) const
 {
     std::set<channelID> neighbours{};
-    if (type == constants::channelTypeX)
+    if (type == channelType::horizontal)
     {
         if (y > 0)
         {
-            neighbours.emplace(x - 1, y, constants::channelTypeY);
-            neighbours.emplace(x, y, constants::channelTypeY);
+            neighbours.emplace(x - 1, y, channelType::vertical);
+            neighbours.emplace(x, y, channelType::vertical);
         }
         if (y < arraySize)
         {
-            neighbours.emplace(x - 1, y + 1, constants::channelTypeY);
-            neighbours.emplace(x, y + 1, constants::channelTypeY);
+            neighbours.emplace(x - 1, y + 1, channelType::vertical);
+            neighbours.emplace(x, y + 1, channelType::vertical);
         }
         if (x > 1)
         {
-            neighbours.emplace(x - 1, y, constants::channelTypeX);
+            neighbours.emplace(x - 1, y, channelType::horizontal);
         }
         if (x < arraySize)
         {
-            neighbours.emplace(x + 1, y, constants::channelTypeX);
+            neighbours.emplace(x + 1, y, channelType::horizontal);
         }
     }
     else
     {
         if (x > 0)
         {
-            neighbours.emplace(x, y - 1, constants::channelTypeX);
-            neighbours.emplace(x, y, constants::channelTypeX);
+            neighbours.emplace(x, y - 1, channelType::horizontal);
+            neighbours.emplace(x, y, channelType::horizontal);
         }
         if (x < arraySize)
         {
-            neighbours.emplace(x + 1, y - 1, constants::channelTypeX);
-            neighbours.emplace(x + 1, y, constants::channelTypeX);
+            neighbours.emplace(x + 1, y - 1, channelType::horizontal);
+            neighbours.emplace(x + 1, y, channelType::horizontal);
         }
         if (y > 1)
         {
-            neighbours.emplace(x, y - 1, constants::channelTypeY);
+            neighbours.emplace(x, y - 1, channelType::vertical);
         }
         if (y < arraySize)
         {
-            neighbours.emplace(x, y + 1, constants::channelTypeY);
+            neighbours.emplace(x, y + 1, channelType::vertical);
         }
     }
     return std::move(neighbours);

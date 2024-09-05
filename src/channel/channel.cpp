@@ -11,7 +11,7 @@ std::map<channelID, channelInfo> generateChannelInformation(unsigned char arrayS
     {
         for (int y = 0; y <= arraySize; y++)
         {
-            channelInformation.emplace(channelID(x, y, constants::channelTypeX), channelInfo{});
+            channelInformation.emplace(channelID(x, y, channelType::horizontal), channelInfo{});
         }
     }
 
@@ -19,7 +19,7 @@ std::map<channelID, channelInfo> generateChannelInformation(unsigned char arrayS
     {
         for (int y = 1; y <= arraySize; y++)
         {
-            channelInformation.emplace(channelID(x, y, constants::channelTypeY), channelInfo{});
+            channelInformation.emplace(channelID(x, y, channelType::vertical), channelInfo{});
         }
     }
 
@@ -82,19 +82,19 @@ channelID chooseNeighbouringChannel(channelID channel, unsigned char arraySize, 
 
     channelID channelA{}, channelB{};
     bool aExists{}, bExists{};
-    if (channel.getType() == constants::channelTypeX)
+    if (channel.getType() == channelType::horizontal)
     {
         aExists = x > 1;
-        channelA = channelID(x - 1, y, constants::channelTypeX);
+        channelA = channelID(x - 1, y, channelType::horizontal);
         bExists = x < arraySize;
-        channelB = channelID(x + 1, y, constants::channelTypeX);
+        channelB = channelID(x + 1, y, channelType::horizontal);
     }
     else
     {
         aExists = y > 1;
-        channelA = channelID(x, y - 1, constants::channelTypeY);
+        channelA = channelID(x, y - 1, channelType::vertical);
         bExists = y < arraySize;
-        channelB = channelID(x, y + 1, constants::channelTypeY);
+        channelB = channelID(x, y + 1, channelType::vertical);
     }
 
     if (aExists || bExists)
@@ -133,32 +133,32 @@ channelID chooseNeighbouringChannel(channelID channel, unsigned char arraySize, 
     // no neighbour of the same type (horizontal/vertical) was valid, so now neighbours of the other type are searched
 
     std::set<std::pair<channelID, unsigned char>> neighbours{};
-    if (channel.getType() == constants::channelTypeX)
+    if (channel.getType() == channelType::horizontal)
     {
         if (y > 0)
         {
-            addIfValid(channelID{x, y, constants::channelTypeY}, neighbours, validChannels, channelInformation);
-            addIfValid(channelID{(unsigned char)(x - 1), y, constants::channelTypeY}, neighbours, validChannels, channelInformation);
+            addIfValid(channelID{x, y, channelType::vertical}, neighbours, validChannels, channelInformation);
+            addIfValid(channelID{(unsigned char)(x - 1), y, channelType::vertical}, neighbours, validChannels, channelInformation);
         }
 
         if (y < arraySize)
         {
-            addIfValid(channelID{(unsigned char)(x - 1), (unsigned char)(y + 1), constants::channelTypeY}, neighbours, validChannels, channelInformation);
-            addIfValid(channelID{x, (unsigned char)(y + 1), constants::channelTypeY}, neighbours, validChannels, channelInformation);
+            addIfValid(channelID{(unsigned char)(x - 1), (unsigned char)(y + 1), channelType::vertical}, neighbours, validChannels, channelInformation);
+            addIfValid(channelID{x, (unsigned char)(y + 1), channelType::vertical}, neighbours, validChannels, channelInformation);
         }
     }
     else
     {
         if (x > 0)
         {
-            addIfValid(channelID{x, (unsigned char)(y - 1), constants::channelTypeX}, neighbours, validChannels, channelInformation);
-            addIfValid(channelID{x, y, constants::channelTypeX}, neighbours, validChannels, channelInformation);
+            addIfValid(channelID{x, (unsigned char)(y - 1), channelType::horizontal}, neighbours, validChannels, channelInformation);
+            addIfValid(channelID{x, y, channelType::horizontal}, neighbours, validChannels, channelInformation);
         }
 
         if (x < arraySize)
         {
-            addIfValid(channelID{(unsigned char)(x + 1), (unsigned char)(y - 1), constants::channelTypeX}, neighbours, validChannels, channelInformation);
-            addIfValid(channelID{(unsigned char)(x + 1), y, constants::channelTypeX}, neighbours, validChannels, channelInformation);
+            addIfValid(channelID{(unsigned char)(x + 1), (unsigned char)(y - 1), channelType::horizontal}, neighbours, validChannels, channelInformation);
+            addIfValid(channelID{(unsigned char)(x + 1), y, channelType::horizontal}, neighbours, validChannels, channelInformation);
         }
     }
 
@@ -176,6 +176,6 @@ channelID chooseNeighbouringChannel(channelID channel, unsigned char arraySize, 
         }
     }
 
-    assert(chosenChannel.isInitialized());
+    assert(lowestAmount != std::numeric_limits<unsigned char>::max());
     return chosenChannel;
 }
