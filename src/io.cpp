@@ -4,7 +4,7 @@
 #include "logging.hpp"
 
 bool readNet(std::string const &fileName, std::map<std::string, std::shared_ptr<net>> &netsByNameOfTheSourceBlock, std::map<std::string, std::shared_ptr<net>> &netsByNameOfTheNet,
-             std::set<std::string> &netsConnectedToClock, std::set<std::shared_ptr<net>> &globalNets, std::map<std::string, std::shared_ptr<block>> &blocks, std::string &errorMessage)
+             std::set<std::shared_ptr<net>> &globalNets, std::map<std::string, std::shared_ptr<block>> &blocks, std::string &errorMessage)
 {
     std::ifstream netFile;
     netFile.open(fileName);
@@ -52,8 +52,6 @@ bool readNet(std::string const &fileName, std::map<std::string, std::shared_ptr<
 
             if (matches[6] != "open")
             {
-                netsConnectedToClock.insert(blockName);
-
                 if (auto it = netsByNameOfTheNet.find(matches[6]); it != netsByNameOfTheNet.end())
                     it->second->addConnectedBlock(blockName);
                 else

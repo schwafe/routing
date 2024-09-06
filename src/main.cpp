@@ -19,12 +19,10 @@ void abortIfTrue(bool condition, unsigned char errorCode, std::string const &err
     }
 }
 
-void sortNets(std::map<std::string, std::shared_ptr<net>> const &netsByNameOfTheNet, std::set<std::string> const &netsConnectedToClock,
-              std::set<std::shared_ptr<net>> const &globalNets, std::vector<std::shared_ptr<net>> &sortedNets, std::vector<std::shared_ptr<net>> &unsortedNets)
+void sortNets(std::map<std::string, std::shared_ptr<net>> const &netsByNameOfTheNet, std::set<std::shared_ptr<net>> const &globalNets, std::vector<std::shared_ptr<net>> &sortedNets,
+              std::vector<std::shared_ptr<net>> &unsortedNets)
 {
     std::multimap<unsigned short, std::shared_ptr<net>> netsGroupedByConnectedBlockCount{};
-    std::multimap<unsigned short, std::shared_ptr<net>> netsConnectedToClockGroupedByConnectedBlockCount{};
-    unsigned short highestConnectedBlockCountClock = 0;
     unsigned short highestConnectedBlockCount = 0;
 
     unsortedNets.reserve(netsByNameOfTheNet.size() - globalNets.size());
@@ -36,35 +34,13 @@ void sortNets(std::map<std::string, std::shared_ptr<net>> const &netsByNameOfThe
         {
             unsortedNets.push_back(p_net);
 
-            if (netsConnectedToClock.contains(entry.first))
-            {
-                unsigned short connectedBlockCount = p_net->getConnectedBlockCount();
-                netsConnectedToClockGroupedByConnectedBlockCount.insert(std::make_pair(connectedBlockCount, p_net));
-
-                if (highestConnectedBlockCountClock < connectedBlockCount)
-                    highestConnectedBlockCountClock = connectedBlockCount;
-            }
-            else
-            {
-                netsGroupedByConnectedBlockCount.insert(std::make_pair(p_net->getConnectedBlockCount(), p_net));
-                if (highestConnectedBlockCount < p_net->getConnectedBlockCount())
-                    highestConnectedBlockCount = p_net->getConnectedBlockCount();
-            }
+            netsGroupedByConnectedBlockCount.insert(std::make_pair(p_net->getConnectedBlockCount(), p_net));
+            if (highestConnectedBlockCount < p_net->getConnectedBlockCount())
+                highestConnectedBlockCount = p_net->getConnectedBlockCount();
         }
     }
 
-    assert(!netsGroupedByConnectedBlockCount.contains(0));
-
     sortedNets.reserve(netsByNameOfTheNet.size() - globalNets.size());
-
-    while (highestConnectedBlockCountClock > 0)
-    {
-        auto range = netsConnectedToClockGroupedByConnectedBlockCount.equal_range(highestConnectedBlockCountClock);
-        for (auto it = range.first; it != range.second; it++)
-            sortedNets.push_back(it->second);
-
-        highestConnectedBlockCountClock--;
-    }
 
     while (highestConnectedBlockCount > 0)
     {
@@ -84,9 +60,8 @@ void readNetsAndBlocks(std::string const &netFileName, std::string const &placeF
     bool success{};
     std::map<std::string, std::shared_ptr<net>> netsByNameOfTheSourceBlock{};
     std::map<std::string, std::shared_ptr<net>> netsByNameOfTheNet{};
-    std::set<std::string> netsConnectedToClock{};
 
-    success = readNet(netFileName, netsByNameOfTheSourceBlock, netsByNameOfTheNet, netsConnectedToClock, globalNets, blocks, errorMessage);
+    success = readNet(netFileName, netsByNameOfTheSourceBlock, netsByNameOfTheNet, globalNets, blocks, errorMessage);
     abortIfTrue(!success, constants::invalidNetFile, errorMessage);
 
     success = readPlace(placeFileName, arraySize, netsByNameOfTheSourceBlock, blocks, errorMessage);
@@ -94,7 +69,7 @@ void readNetsAndBlocks(std::string const &netFileName, std::string const &placeF
 
     assert(netsByNameOfTheNet.size() == netsByNameOfTheSourceBlock.size());
 
-    sortNets(netsByNameOfTheNet, netsConnectedToClock, globalNets, sortedNets, unsortedNets);
+    sortNets(netsByNameOfTheNet, globalNets, sortedNets, unsortedNets);
 }
 
 void deepCopy(std::vector<std::shared_ptr<net>> const &sortedNets, std::vector<std::shared_ptr<net>> &copyOfSortedNets, std::map<std::string, std::shared_ptr<block>> const &blocks,
