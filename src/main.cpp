@@ -1,4 +1,4 @@
-#include <time.h>
+#include <chrono>
 #include <iostream>
 #include <regex>
 #include <cassert>
@@ -185,8 +185,7 @@ void routeAndMinimiseChannelWidth(std::vector<std::shared_ptr<net>> const &sorte
 
 int main(int argc, char *argv[])
 {
-    struct timeval startTime, endTime;
-    gettimeofday(&startTime, NULL);
+    auto startTime = std::chrono::steady_clock::now();
 
     abortIfTrue(argc != 4 && argc != 5, constants::wrongArguments, "Argument count unexpected! Arguments received: '" + argsToString(argc, argv) + constants::correctArgumentsMessage);
     abortIfTrue(argc == 5 && !std::regex_match(argv[4], constants::numberPattern), constants::wrongArguments, "The fourth argument was not a number! Arguments received: '" + argsToString(argc, argv) + constants::correctArgumentsMessage);
@@ -243,16 +242,10 @@ int main(int argc, char *argv[])
     printLogMessage("Writing routing file!");
     writeRouting(routeFileName, arraySize, finalNets, globalNets, finalBlocks);
 
-    gettimeofday(&endTime, NULL);
-    long elapsedSeconds = endTime.tv_sec - startTime.tv_sec;
-    long elapsedMilliseconds = (endTime.tv_usec - startTime.tv_usec) / constants::microsecondsPerMillisecond;
-    if (elapsedMilliseconds < 0)
-    {
-        elapsedSeconds--;
-        elapsedMilliseconds += constants::millisecondsPerSecond;
-    }
+    auto endTime = std::chrono::steady_clock::now();
 
-    printf("Program ran for: %d.%d seconds.\n", elapsedSeconds, elapsedMilliseconds);
+    std::chrono::duration<double> duration{endTime - startTime};
+    std::cout << "The program ran for " << duration << ".\n";
 
     return constants::success;
 }
