@@ -37,7 +37,7 @@ bool isChannelTrackFree(channelID const &channel, unsigned char track, std::map<
     return channelInformation.find(channel)->second.isTrackFree(track);
 }
 
-std::set<unsigned char> getFreeTracks(channelID const &channel, std::map<channelID, channelInfo> const &channelInformation, unsigned char channelWidth)
+std::set<unsigned char> generateFreeTracks(channelID const &channel, std::map<channelID, channelInfo> const &channelInformation, unsigned char channelWidth)
 {
     assert(channelInformation.contains(channel));
 
@@ -58,7 +58,7 @@ unsigned char findOptimalTrack(channelID const &channel, std::map<channelID, cha
     return channelInformation.find(channel)->second.findFreeTrack(channelWidth);
 }
 
-void useChannel(channelID const &channel, std::map<channelID, channelInfo> &channelInformation, unsigned char track)
+void updateChannelInfo(channelID const &channel, std::map<channelID, channelInfo> &channelInformation, unsigned char track)
 {
     assert(channelInformation.contains(channel));
     channelInformation.find(channel)->second.useChannel(track);

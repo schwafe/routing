@@ -134,7 +134,7 @@ findResult findPin(unsigned char trackToUse, std::map<unsigned char, std::set<ch
 
 findResult findPinForGivenTracks(std::set<unsigned char> const &tracksToCheck, std::vector<std::map<unsigned char, std::set<channelID>>> &indexToChannelsVectors, unsigned char arraySize,
                                  unsigned char channelWidth, std::map<channelID, channelInfo> const &channelInformation, std::map<channelID, std::set<std::string>> const &relevantChannels,
-                                 std::set<channelID> const &doublyRelevantChannels, std::map<std::string, std::shared_ptr<block>> const &blocks, unsigned char maximumIndex)
+                                 std::set<channelID> const &doublyRelevantChannels, std::map<std::string, std::shared_ptr<block>> const &blocks, unsigned char &maximumIndex)
 {
     findResult bestResult;
 
@@ -144,15 +144,19 @@ findResult findPinForGivenTracks(std::set<unsigned char> const &tracksToCheck, s
                                     doublyRelevantChannels, blocks, maximumIndex);
 
         if (result.isInitialized() && result.indexOfChosenChannel < bestResult.indexOfChosenChannel)
+        {
             bestResult = result;
+            if (bestResult.indexOfChosenChannel < maximumIndex)
+                maximumIndex = bestResult.indexOfChosenChannel;
+        }
     }
     return bestResult;
 }
 
-void updateChannelAndNetAndConnection(channelID channel, unsigned char track, std::shared_ptr<net> const &p_net, std::map<channelID, channelInfo> &channelInformation,
+void useChannel(channelID channel, unsigned char track, std::shared_ptr<net> const &p_net, std::map<channelID, channelInfo> &channelInformation,
                                       std::vector<channelID> &connectionToBlock)
 {
-    useChannel(channel, channelInformation, track);
+    updateChannelInfo(channel, channelInformation, track);
     p_net->setUsedTrack(channel, track);
     connectionToBlock.push_back(channel);
 }
@@ -164,7 +168,7 @@ std::vector<channelID> retrace(findResult result, std::map<unsigned char, std::s
 
     std::vector<channelID> connectionToBlock{};
 
-    updateChannelAndNetAndConnection(result.chosenChannel, result.track, p_net, channelInformation, connectionToBlock);
+    useChannel(result.chosenChannel, result.track, p_net, channelInformation, connectionToBlock);
 
     channelID currentChannel = result.chosenChannel;
     int expectedIndex = result.indexOfChosenChannel - 1;
@@ -173,7 +177,7 @@ std::vector<channelID> retrace(findResult result, std::map<unsigned char, std::s
     {
         channelID chosenChannel = chooseNeighbouringChannel(currentChannel, arraySize, indexToChannels.find(expectedIndex)->second, channelInformation);
 
-        updateChannelAndNetAndConnection(chosenChannel, result.track, p_net, channelInformation, connectionToBlock);
+        useChannel(chosenChannel, result.track, p_net, channelInformation, connectionToBlock);
 
         currentChannel = chosenChannel;
         expectedIndex--;
@@ -185,7 +189,7 @@ std::vector<channelID> retrace(findResult result, std::map<unsigned char, std::s
     if (previouslyUsedTrack)
         connectionToBlock.push_back(chosenChannelWithIndexZero);
     else
-        updateChannelAndNetAndConnection(chosenChannelWithIndexZero, result.track, p_net, channelInformation, connectionToBlock);
+        useChannel(chosenChannelWithIndexZero, result.track, p_net, channelInformation, connectionToBlock);
 
     for (channelID channel : connectionToBlock)
         zeroIndexSet.insert(channel);
@@ -226,7 +230,7 @@ unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, st
             unsigned char optimalTrack = findOptimalTrack(sourceChannel, channelInformation, channelWidth);
 
             std::vector<channelID> connectionToBlock{};
-            updateChannelAndNetAndConnection(sourceChannel, optimalTrack, p_net, channelInformation, connectionToBlock);
+            useChannel(sourceChannel, optimalTrack, p_net, channelInformation, connectionToBlock);
 
             updateNetAndCounterAndRelevantChannels(sourceChannel, optimalTrack, connectionToBlock, blocks, p_net, blocksReached, relevantChannels, doublyRelevantChannels);
         }
@@ -239,12 +243,14 @@ unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, st
             findResult bestResult = findPinForGivenTracks(p_net->findUsedTracksAtSourceChannel(), indexToChannelsVectors, arraySize, channelWidth, channelInformation,
                                                           relevantChannels, doublyRelevantChannels, blocks, maximumIndex);
 
+            // new tracks need to find a solution that is at least twice as good (connection half as long), to be chosen
             if (bestResult.isInitialized())
-                maximumIndex = bestResult.indexOfChosenChannel / 2;
+                maximumIndex /= 2;
 
-            std::set<unsigned char> freeTracks = getFreeTracks(sourceChannel, channelInformation, channelWidth);
-            findResult bestResultNewTrack = findPinForGivenTracks(freeTracks, indexToChannelsVectors, arraySize,
-                                                                  channelWidth, channelInformation, relevantChannels, doublyRelevantChannels, blocks, maximumIndex);
+            findResult bestResultNewTrack;
+            if (maximumIndex > constants::indexZero)
+                bestResultNewTrack = findPinForGivenTracks(generateFreeTracks(sourceChannel, channelInformation, channelWidth), indexToChannelsVectors, arraySize,
+                                                           channelWidth, channelInformation, relevantChannels, doublyRelevantChannels, blocks, maximumIndex);
 
             if (!bestResult.isInitialized() && !bestResultNewTrack.isInitialized())
                 return netIndex;
