@@ -5,7 +5,7 @@
 #include <limits>
 #include "channel/channel.hpp"
 
-enum blockType
+enum blockType : std::int8_t
 {
     CLB,
     input,

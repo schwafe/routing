@@ -14,7 +14,8 @@ void abortIfTrue(bool condition, unsigned char errorCode, std::string const &err
 {
     if (condition)
     {
-        std::cerr << errorMessage << std::endl;
+        std::cerr << errorMessage;
+        std::flush(std::cerr);
         exit(errorCode);
     }
 }
@@ -162,7 +163,7 @@ void routeAndMinimiseChannelWidth(std::vector<std::shared_ptr<net>> const &sorte
             failedWidth = channelWidth;
             printLogMessage("Routing failed with a channelWidth of " + std::to_string(+failedWidth) + " tracks!");
 
-            if (netsRouted * 1.5 < sortedNets.size())
+            if (netsRouted * constants::ratioEarlyFail < sortedNets.size())
             {
                 if (channelWidth + 4 < successfulWidth)
                     channelWidth += 4;

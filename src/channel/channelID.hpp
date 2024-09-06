@@ -2,8 +2,9 @@
 #define CHANNELID_H
 
 #include <set>
+#include <cstdint>
 
-enum channelType
+enum channelType : std::int8_t
 {
     horizontal,
     vertical
