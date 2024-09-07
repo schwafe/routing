@@ -6,6 +6,7 @@
 
 enum channelType : std::int8_t
 {
+    uninitialised,
     horizontal,
     vertical
 };
@@ -14,7 +15,7 @@ class channelID
 {
     unsigned char x{};
     unsigned char y{};
-    channelType type{};
+    channelType type = channelType::uninitialised;
 
 public:
     auto operator<=>(channelID const &rhs) const = default;
@@ -24,6 +25,8 @@ public:
     unsigned char getXCoordinate() const;
     unsigned char getYCoordinate() const;
     channelType getType() const;
+    bool isInitialised() const;
+
     std::set<channelID> generateNeighbours(unsigned char arraySize) const;
 };
 

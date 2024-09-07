@@ -19,6 +19,11 @@ channelType channelID::getType() const
     return type;
 }
 
+bool channelID::isInitialised() const
+{
+    return type != channelType::uninitialised;
+}
+
 std::set<channelID> channelID::generateNeighbours(unsigned char arraySize) const
 {
     std::set<channelID> neighbours{};

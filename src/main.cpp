@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
     if (argc == 5)
         channelWidthToTry = std::stoi(argv[4]);
 
-    abortIfTrue(channelWidthToTry > constants::maximumChannelWidth, constants::wrongArguments, "The given channel width to try is too high! The maximum is " + std::to_string(constants::maximumChannelWidth) + ".\n");
+    abortIfTrue(channelWidthToTry != std::numeric_limits<unsigned char>::max() && channelWidthToTry > constants::maximumChannelWidth, constants::wrongArguments, "The given channel width to try is too high! The maximum is " + std::to_string(constants::maximumChannelWidth) + ".\n");
 
     unsigned char arraySize{};
     std::string netFileName = argv[1];

@@ -84,7 +84,7 @@ findResult findPin(unsigned char trackToUse, std::map<unsigned char, std::set<ch
 {
     bool relevantChannelFound{};
     channelID firstRelChan;
-    unsigned char indexOfFirstRelChan{};
+    unsigned char indexOfFirstRelChan = std::numeric_limits<unsigned char>::max();
 
     std::set<channelID> fullyProcessedChannels{};
     unsigned char currentIndex = constants::indexZero;
@@ -126,8 +126,11 @@ findResult findPin(unsigned char trackToUse, std::map<unsigned char, std::set<ch
         iterator = indexToChannels.find(currentIndex);
     }
 
-    if (relevantChannelFound)
+        if (relevantChannelFound)
+    {
+        assert(indexOfFirstRelChan != std::numeric_limits<unsigned char>::max());
         return findResult{trackToUse, firstRelChan, indexOfFirstRelChan};
+    }
     else
         return findResult{};
 }
@@ -154,8 +157,9 @@ findResult findPinForGivenTracks(std::set<unsigned char> const &tracksToCheck, s
 }
 
 void useChannel(channelID channel, unsigned char track, std::shared_ptr<net> const &p_net, std::map<channelID, channelInfo> &channelInformation,
-                                      std::vector<channelID> &connectionToBlock)
+                std::vector<channelID> &connectionToBlock)
 {
+    assert(channel.isInitialised());
     updateChannelInfo(channel, channelInformation, track);
     p_net->setUsedTrack(channel, track);
     connectionToBlock.push_back(channel);
@@ -254,7 +258,7 @@ unsigned short routeNets(unsigned char arraySize, unsigned char channelWidth, st
 
             if (!bestResult.isInitialized() && !bestResultNewTrack.isInitialized())
                 return netIndex;
-            else if (constants::ratioNewToOld * bestResultNewTrack.indexOfChosenChannel < bestResult.indexOfChosenChannel)
+            else if (!bestResult.isInitialized() || constants::ratioNewToOld * bestResultNewTrack.indexOfChosenChannel < bestResult.indexOfChosenChannel)
             {
                 previouslyUsedTrack = false;
                 bestResult = bestResultNewTrack;
