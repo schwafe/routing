@@ -143,7 +143,7 @@ void routeAndMinimiseChannelWidth(std::vector<std::shared_ptr<net>> const &sorte
     std::vector<std::shared_ptr<net>> tempNets{};
     std::map<std::string, std::shared_ptr<block>> tempBlocks{};
 
-    while (failedWidth < successfulWidth - 1)
+    while (failedWidth < successfulWidth - 1 && channelWidth < constants::maximumChannelWidth)
     {
         tryRoutingWithChannelWidth(sortedNets, unsortedNets, finalNets, blocks, finalBlocks, arraySize, channelWidth, routingIsSorted, netsRouted);
 
@@ -194,6 +194,8 @@ int main(int argc, char *argv[])
     unsigned char channelWidthToTry = std::numeric_limits<unsigned char>::max();
     if (argc == 5)
         channelWidthToTry = std::stoi(argv[4]);
+
+    abortIfTrue(channelWidthToTry > constants::maximumChannelWidth, constants::wrongArguments, "The given channel width to try is too high! The maximum is " + std::to_string(constants::maximumChannelWidth) + ".\n");
 
     unsigned char arraySize{};
     std::string netFileName = argv[1];
