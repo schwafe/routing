@@ -6,7 +6,6 @@
 #include "net.hpp"
 #include "channel/channel.hpp"
 #include "findResult.hpp"
-#include "concurrentRouting.hpp"
 
 void generateRelevantChannels(std::map<channelID, std::set<std::string>> &relevantChannels, std::set<channelID> &doublyRelevantChannels,
                               std::shared_ptr<net> const &p_net, std::map<std::string, std::shared_ptr<block>> const &blocks)
