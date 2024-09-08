@@ -318,6 +318,7 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
             for (auto revIt = connection.rbegin(); revIt != connection.rend(); revIt++)
             {
                 channel = *revIt;
+                assert(channel.isInitialised());
                 if (channel == p_net->getSourceChannel())
                 {
                     assert(revIt == connection.rbegin());
@@ -334,7 +335,13 @@ void writeRouting(std::string const &fileName, unsigned char arraySize, std::vec
                     }
                 }
 
-                routingFile << " CHAN" << channel.getType() << " (" << +channel.getXCoordinate() << ',' << +channel.getYCoordinate() << ")  Track: " << +track << "  \n";
+                routingFile << " CHAN";
+                if (channel.getType() == channelType::horizontal)
+                    routingFile << 'X';
+                else
+                    routingFile << 'Y';
+
+                routingFile << " (" << +channel.getXCoordinate() << ',' << +channel.getYCoordinate() << ")  Track: " << +track << "  \n";
             }
 
             if (p_block->getType() == blockType::CLB)
